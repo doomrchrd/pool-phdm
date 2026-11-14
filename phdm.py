@@ -14,6 +14,21 @@ st.set_page_config(
 )
 
 # =========================================================
+# VÉRIFICATION DU MOT DE PASSE COMMISSAIRE
+# =========================================================
+MOT_DE_PASSE_SECRET = "phdm2026"  # 👈 Mot de passe secret pour PHDM
+
+with st.sidebar:
+    st.markdown("### 🔐 Accès Direction")
+    mdp_entre = st.text_input("Mot de passe commissaire :", type="password")
+    is_admin = (mdp_entre == MOT_DE_PASSE_SECRET)
+    
+    if is_admin:
+        st.success("🟢 Mode Commissaire Déverrouillé")
+    elif mdp_entre != "":
+        st.error("Mot de passe incorrect")
+
+# =========================================================
 # 1. OUTILS DE NETTOYAGE INTELLIGENTS & FORMATAGE
 # =========================================================
 MOIS_FR = {
@@ -853,97 +868,116 @@ with tab_equipes:
     r_def, g_def = find_1_to_1_swaps(df_def, df_banc_def)
     r_gard, g_gard = find_1_to_1_swaps(df_gard, df_banc_gard)
 
+    # =========================================================
+    # BARRE D'ACTION (VERROUILLÉE POUR LES VISITEURS)
+    # =========================================================
     c1, c2, c3 = st.columns([4, 1.2, 1.2])
     with c1: st.info(f"🟢 **Statut API LNH** : {api_status}")
+    
     with c2:
-        if st.button("🔄 ACTUALISER API", use_container_width=True):
-            st.cache_data.clear()
-            for slg in SLUG_MAP.values():
-                for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
-                    if f"{slg}_df_{role}" in st.session_state:
-                        cur_df = st.session_state[f"{slg}_df_{role}"]
-                        for idx_p, row_p in cur_df.iterrows():
-                            t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
-                            cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
-                        st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-            for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-            save_state()
-            st.rerun()
+        if is_admin:
+            if st.button("🔄 ACTUALISER API", use_container_width=True):
+                st.cache_data.clear()
+                for slg in SLUG_MAP.values():
+                    for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
+                        if f"{slg}_df_{role}" in st.session_state:
+                            cur_df = st.session_state[f"{slg}_df_{role}"]
+                            for idx_p, row_p in cur_df.iterrows():
+                                t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
+                                cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
+                            st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+                save_state()
+                st.rerun()
+        else:
+            st.button("🔄 ACTUALISER API", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
             
     with c3:
-        if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary"):
-            init_rosters_from_csv()
-            init_recrues_from_csv()
-            abbrs = list(TEAM_ABBR_MAP.values())
-            for annee in ["2026", "2027", "2028"]:
-                st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
-            import_excel_transactions()
-            for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-            save_state()
-            st.success("✅ Base de données rechargée avec succès !")
-            st.rerun()
+        if is_admin:
+            if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary"):
+                init_rosters_from_csv()
+                init_recrues_from_csv()
+                abbrs = list(TEAM_ABBR_MAP.values())
+                for annee in ["2026", "2027", "2028"]:
+                    st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
+                import_excel_transactions()
+                for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+                save_state()
+                st.success("✅ Base de données rechargée avec succès !")
+                st.rerun()
+        else:
+            st.button("📥 RECHARGER BASE", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
 
     c_tog, c_btn = st.columns(2)
     with c_tog: afficher_couleurs = st.toggle("🎨 **Afficher les couleurs d'alerte de remplacement**", value=True)
     with c_btn:
-        if st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True):
-            for a_df, b_df, rl, gl, ka, kb in [(df_att, df_banc_att, r_att, g_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"), (df_def, df_banc_def, r_def, g_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"), (df_gard, df_banc_gard, r_gard, g_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard")]:
-                if rl and gl:
-                    st.session_state[ka] = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    st.session_state[kb] = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    st.session_state[ka]["No"], st.session_state[kb]["No"] = range(1, len(st.session_state[ka])+1), range(1, len(st.session_state[kb])+1)
-            save_state()
-            st.rerun()
+        if is_admin:
+            if st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True):
+                for a_df, b_df, rl, gl, ka, kb in [(df_att, df_banc_att, r_att, g_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"), (df_def, df_banc_def, r_def, g_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"), (df_gard, df_banc_gard, r_gard, g_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard")]:
+                    if rl and gl:
+                        st.session_state[ka] = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        st.session_state[kb] = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        st.session_state[ka]["No"], st.session_state[kb]["No"] = range(1, len(st.session_state[ka])+1), range(1, len(st.session_state[kb])+1)
+                save_state()
+                st.rerun()
+        else:
+            st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
 
-    with st.expander("🛠️ PERMUTATION MANUELLE (Monter, descendre ou combler)"):
-        pos_choix = st.radio("Position à modifier :", ["Attaquants", "Défenseurs", "Gardiens"], horizontal=True, key=f"man_pos_{team_slug}")
-        min_att, min_def, min_gard = 19, 7, 2
-        
-        if pos_choix == "Attaquants": 
-            df_p, df_b, k_p, k_b = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"
-            min_p, max_p = min(min_att, limites["att"]), limites["att"]
-        elif pos_choix == "Défenseurs": 
-            df_p, df_b, k_p, k_b = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"
-            min_p, max_p = min(min_def, limites["def"]), limites["def"]
-        else: 
-            df_p, df_b, k_p, k_b = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard"
-            min_p, max_p = min(min_gard, limites["gard"]), limites["gard"]
+    # =========================================================
+    # PERMUTATION MANUELLE (MASQUÉE POUR LES VISITEURS)
+    # =========================================================
+    if is_admin:
+        with st.expander("🛠️ PERMUTATION MANUELLE (Monter, descendre ou combler)"):
+            pos_choix = st.radio("Position à modifier :", ["Attaquants", "Défenseurs", "Gardiens"], horizontal=True, key=f"man_pos_{team_slug}")
+            min_att, min_def, min_gard = 19, 7, 2
             
-        real_p_list = [p for p in df_p["Joueurs"].tolist() if p != "[Carreau Libre]"]
-        real_b_list = df_b["Joueurs"].tolist()
-        
-        p_choices = real_p_list.copy()
-        if len(real_p_list) < max_p: p_choices = ["[Combler un carreau libre (Aucun départ)]"] + p_choices
-        b_choices = real_b_list.copy()
-        if len(real_p_list) > min_p: b_choices = ["[Laisser un carreau libre (Aucune montée)]"] + b_choices
+            if pos_choix == "Attaquants": 
+                df_p, df_b, k_p, k_b = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"
+                min_p, max_p = min(min_att, limites["att"]), limites["att"]
+            elif pos_choix == "Défenseurs": 
+                df_p, df_b, k_p, k_b = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"
+                min_p, max_p = min(min_def, limites["def"]), limites["def"]
+            else: 
+                df_p, df_b, k_p, k_b = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard"
+                min_p, max_p = min(min_gard, limites["gard"]), limites["gard"]
+                
+            real_p_list = [p for p in df_p["Joueurs"].tolist() if p != "[Carreau Libre]"]
+            real_b_list = df_b["Joueurs"].tolist()
             
-        col_m1, col_m2, col_m3 = st.columns([2.5, 2.5, 1.2], vertical_alignment="bottom")
-        with col_m1: p_sel = st.selectbox("📉 Joueur partant à descendre au banc :", p_choices, key=f"p_sel_{team_slug}")
-        with col_m2: b_sel = st.selectbox("📈 Joueur du banc à monter partant :", b_choices, key=f"b_sel_{team_slug}")
-        with col_m3:
-            if st.button("🔄 EXÉCUTER", key=f"btn_perm_{team_slug}", use_container_width=True):
-                if p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
-                    row_b = df_b[df_b["Joueurs"] == b_sel].copy()
-                    new_b = df_b[df_b["Joueurs"] != b_sel].reset_index(drop=True)
-                    new_p = pd.concat([df_p[df_p["Joueurs"] != "[Carreau Libre]"], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                    save_state(); st.rerun()
-                elif b_sel.startswith("[Laisser") and not p_sel.startswith("[Combler"):
-                    row_p = df_p[df_p["Joueurs"] == p_sel].copy()
-                    new_p = df_p[df_p["Joueurs"] != p_sel].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    new_b = pd.concat([df_b, row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                    save_state(); st.rerun()
-                elif not p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
-                    row_p = df_p[df_p["Joueurs"] == p_sel].copy()
-                    row_b = df_b[df_b["Joueurs"] == b_sel].copy()
-                    new_p = pd.concat([df_p[df_p["Joueurs"] != p_sel], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    new_b = pd.concat([df_b[df_b["Joueurs"] != b_sel], row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                    save_state(); st.rerun()
+            p_choices = real_p_list.copy()
+            if len(real_p_list) < max_p: p_choices = ["[Combler un carreau libre (Aucun départ)]"] + p_choices
+            b_choices = real_b_list.copy()
+            if len(real_p_list) > min_p: b_choices = ["[Laisser un carreau libre (Aucune montée)]"] + b_choices
+                
+            col_m1, col_m2, col_m3 = st.columns([2.5, 2.5, 1.2], vertical_alignment="bottom")
+            with col_m1: p_sel = st.selectbox("📉 Joueur partant à descendre au banc :", p_choices, key=f"p_sel_{team_slug}")
+            with col_m2: b_sel = st.selectbox("📈 Joueur du banc à monter partant :", b_choices, key=f"b_sel_{team_slug}")
+            with col_m3:
+                if st.button("🔄 EXÉCUTER", key=f"btn_perm_{team_slug}", use_container_width=True):
+                    if p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
+                        row_b = df_b[df_b["Joueurs"] == b_sel].copy()
+                        new_b = df_b[df_b["Joueurs"] != b_sel].reset_index(drop=True)
+                        new_p = pd.concat([df_p[df_p["Joueurs"] != "[Carreau Libre]"], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                        save_state(); st.rerun()
+                    elif b_sel.startswith("[Laisser") and not p_sel.startswith("[Combler"):
+                        row_p = df_p[df_p["Joueurs"] == p_sel].copy()
+                        new_p = df_p[df_p["Joueurs"] != p_sel].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_b = pd.concat([df_b, row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                        save_state(); st.rerun()
+                    elif not p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
+                        row_p = df_p[df_p["Joueurs"] == p_sel].copy()
+                        row_b = df_b[df_b["Joueurs"] == b_sel].copy()
+                        new_p = pd.concat([df_p[df_p["Joueurs"] != p_sel], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_b = pd.concat([df_b[df_b["Joueurs"] != b_sel], row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                        save_state(); st.rerun()
+    else:
+        st.info("ℹ️ **Mode Consultation (Lecture seule)** : L'alignement et les permutations sont réservés au commissaire.")
 
     def fill_empty(df, m):
         if len(df) < m: return pd.concat([df, pd.DataFrame([{"No": i, "Joueurs": "[Carreau Libre]", "T": "—", "A": 0, "EXP": 0, "PJ": 0, "Pts": 0} for i in range(len(df)+1, m+1)])], ignore_index=True)
@@ -1474,4 +1508,4 @@ with tab_recrues:
                 if df_eq.empty: continue
                 logo, color = get_nhl_team_branding(eq)
                 st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(15,23,42,0.6);padding:10px 15px;border-left:6px solid {color};border-radius:8px;margin:30px 0 10px;box-shadow:0 2px 10px rgba(0,0,0,0.2);"><img src="{logo}" width="40" style="margin-right: 15px; filter: drop-shadow(0px 0px 3px rgba(255,255,255,0.1));"><h4 style="margin: 0; color: #F8FAFC; font-weight:800; text-transform: uppercase; letter-spacing:1px;">{eq} <span style="color:{t['primary']}; font-size:0.9rem;">({len(df_eq)})</span></h4></div>''', unsafe_allow_html=True)
-                st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC)
+                st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC
