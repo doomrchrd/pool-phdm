@@ -14,21 +14,6 @@ st.set_page_config(
 )
 
 # =========================================================
-# VÉRIFICATION DU MOT DE PASSE COMMISSAIRE
-# =========================================================
-MOT_DE_PASSE_SECRET = "phdm2026"  # 👈 Mot de passe secret pour PHDM
-
-with st.sidebar:
-    st.markdown("### 🔐 Accès Direction")
-    mdp_entre = st.text_input("Mot de passe commissaire :", type="password")
-    is_admin = (mdp_entre == MOT_DE_PASSE_SECRET)
-    
-    if is_admin:
-        st.success("🟢 Mode Commissaire Déverrouillé")
-    elif mdp_entre != "":
-        st.error("Mot de passe incorrect")
-
-# =========================================================
 # 1. OUTILS DE NETTOYAGE INTELLIGENTS & FORMATAGE
 # =========================================================
 MOIS_FR = {
@@ -37,13 +22,16 @@ MOIS_FR = {
 }
 
 def format_date_fr(val):
-    if pd.isna(val): return ""
+    if pd.isna(val): 
+        return ""
     val_str = str(val).strip()
-    if val_str.lower() in ["nan", "none", "", "nat", " "]: return ""
+    if val_str.lower() in ["nan", "none", "", "nat", " "]: 
+        return ""
     try:
         dt = pd.to_datetime(val)
         return f"{dt.day} {MOIS_FR.get(dt.month, '')} {dt.year}".strip()
     except Exception:
+        # En cas d'exception, on supprime l'heure si elle existe
         return val_str.split("T")[0].split(" ")[0]
 
 def clean_str(s):
@@ -114,7 +102,6 @@ def fetch_nhl_stats():
                 nom_clean = clean_str(p.get("skaterFullName", ""))
                 if nom_clean not in skaters: skaters[nom_clean] = []
                 skaters[nom_clean].append({"pj": p.get("gamesPlayed", 0), "pts": p.get("points", 0), "team": p.get("teamAbbrevs", ""), "age": None, "posCode": p.get("positionCode", "")})
-        
         url_sk_bio = f"https://api.nhle.com/stats/rest/en/skater/bios?limit=-1&cayenneExp=seasonId={SAISON}%20and%20gameTypeId={GAME_TYPE}"
         r_sk_bio = requests.get(url_sk_bio, headers=headers, timeout=10)
         if r_sk_bio.status_code == 200:
@@ -129,7 +116,6 @@ def fetch_nhl_stats():
                         for sk in skaters[nom_clean]:
                             if sk.get("posCode") == pos or not sk.get("posCode"): sk["age"] = age
                     except: pass
-
         url_g = f"https://api.nhle.com/stats/rest/en/goalie/summary?limit=-1&cayenneExp=seasonId={SAISON}%20and%20gameTypeId={GAME_TYPE}"
         r_g = requests.get(url_g, headers=headers, timeout=10)
         if r_g.status_code == 200:
@@ -138,7 +124,6 @@ def fetch_nhl_stats():
                 nom_clean = clean_str(g.get("goalieFullName", ""))
                 if nom_clean not in goalies: goalies[nom_clean] = []
                 goalies[nom_clean].append({"pj": g.get("gamesPlayed", 0), "pts": (v * 2) + (otl * 1) + (so * 1), "team": g.get("teamAbbrevs", ""), "age": None, "posCode": "G"})
-                
         url_g_bio = f"https://api.nhle.com/stats/rest/en/goalie/bios?limit=-1&cayenneExp=seasonId={SAISON}%20and%20gameTypeId={GAME_TYPE}"
         r_g_bio = requests.get(url_g_bio, headers=headers, timeout=10)
         if r_g_bio.status_code == 200:
@@ -223,7 +208,7 @@ def get_player_live_stats(nom_excel, team_defaut, age_defaut, pos_cat):
     return team_defaut, age_defaut, 0, 0
 
 # =========================================================
-# 3. ÉQUIPES & DIRECTEURS GÉNÉRAUX (PHDM)
+# 3. ÉQUIPES & DIRECTEURS GÉNÉRAUX
 # =========================================================
 POOLERS = {
     "Dallas Stars": "Dominic Richard", "Saint-Louis Blues": "Stéphane Moisan", "Vegas Golden Knights": "Alain Leclerc",
@@ -253,7 +238,9 @@ def to_team_abbr(val):
     if s_upper in ["UCK", "UCKA", "MCW"]: return "MCW"
     
     words = s.split()
+    # 1. Vancouver est testé EN PREMIER pour ne jamais entrer en conflit avec 'uck'
     if "van" in words or any(w in s for w in ["vancouver", "canuck", "canucks"]): return "VAN"
+    # 2. UCKA MOCKBA officiel
     if "mcw" in words or "uck" in words or any(w in s for w in ["ucka", "mockba"]): return "MCW"
     if "chi" in words or any(w in s for w in ["chicago", "black hawk", "blackhawks", "hawks"]): return "CHI"
     if "stl" in words or any(w in s for w in ["saint louis", "st louis", "blues"]): return "STL"
@@ -315,6 +302,8 @@ def get_nhl_team_branding(team_name):
         if key in name_lower: return logo, color
     return "https://assets.nhle.com/logos/nhl/svg/NHL_light.svg", "#94A3B8"
 
+TEAM_QUOTAS = {}
+
 # =========================================================
 # 4. GESTION DES FICHIERS (CSV & EXCEL MASTER)
 # =========================================================
@@ -328,17 +317,6 @@ def match_team_name(val):
     abbr = to_team_abbr(val)
     if abbr and abbr in ABBR_TO_TEAM:
         return ABBR_TO_TEAM[abbr]
-    return None
-
-def find_sheet_by_keyword(path, keywords):
-    try:
-        xls = pd.ExcelFile(path)
-        for s in xls.sheet_names:
-            s_clean = clean_str(s)
-            if any(k in s_clean for k in keywords):
-                return s
-    except Exception:
-        pass
     return None
 
 def init_rosters_from_csv():
@@ -430,10 +408,7 @@ def import_excel_transactions():
     path = get_file_path("gestion_phdm.xlsx")
     if not os.path.exists(path): return False
     try:
-        sheet_name = find_sheet_by_keyword(path, ["transaction", "echange", "trade"])
-        if not sheet_name: return False
-
-        df_t = pd.read_excel(path, sheet_name=sheet_name)
+        df_t = pd.read_excel(path, sheet_name="Transactions")
         df_t = clean_excel_dataframe(df_t)
         st.session_state["trade_history"] = []
         for _, row in df_t.iterrows():
@@ -513,6 +488,7 @@ def import_excel_transactions():
             m_c1 = parse_picks(c1_list, TEAM_ABBR_MAP[eq1_name], TEAM_ABBR_MAP[eq2_name])
             m_c2 = parse_picks(c2_list, TEAM_ABBR_MAP[eq2_name], TEAM_ABBR_MAP[eq1_name])
             
+            # Formatage propre en français : 12 nov 2026
             date_clean = format_date_fr(row.iloc[0])
             date_str = date_clean if date_clean else "N/A"
             
@@ -546,7 +522,8 @@ def load_state():
     except: return False
 
 def enforce_roster_limits(slug):
-    for pos, max_partants in [("att", 25), ("def", 11), ("gard", 4)]:
+    quotas = TEAM_QUOTAS.get(slug, {"att": 25, "def": 11, "gard": 4})
+    for pos, max_partants in [("att", quotas["att"]), ("def", quotas["def"]), ("gard", quotas["gard"])]:
         df_p = st.session_state.get(f"{slug}_df_{pos}")
         df_b = st.session_state.get(f"{slug}_df_banc_{pos}")
         if df_p is not None and df_b is not None and len(df_p) > max_partants:
@@ -567,13 +544,12 @@ if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_st
     for annee in ["2026", "2027", "2028"]:
         if f"df_draft_{annee}" not in st.session_state:
             st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
-    import_excel_transactions()
 
 if "df_all_recrues" not in st.session_state: init_recrues_from_csv()
 for slug in SLUG_MAP.values(): enforce_roster_limits(slug)
 
 # =========================================================
-# 5. THÈME DYNAMIQUE DE L'ÉQUIPE (DARK MODE)
+# 5. INITIALISATION DU THÈME DYNAMIQUE DE L'ÉQUIPE (DARK MODE)
 # =========================================================
 team_totals = []
 for t_name in POOLERS.keys():
@@ -587,7 +563,7 @@ rank_general = sorted(team_totals, key=lambda x: x["total"], reverse=True)
 premier_general = rank_general[0]["team"] if rank_general else ""
 rank_att = sorted([t for t in team_totals if t["team"] != premier_general], key=lambda x: x["att"], reverse=True)
 rank_def = sorted([t for t in team_totals if t["team"] != premier_general], key=lambda x: x["def"], reverse=True)
-rank_gard = sorted([t for t in team_totals if t["team"] not in [premier_general, (rank_def[0]["team"] if rank_def else "")]], key=lambda x: x["gard"], reverse=True)
+rank_gard = sorted([t for t in team_totals if t["team"] != premier_general], key=lambda x: x["gard"], reverse=True)
 
 draft_base_order = sorted(team_totals, key=lambda x: (x["total"], x["team"]), reverse=False)
 
@@ -600,67 +576,78 @@ THEMES = {
     "Dallas Stars": {
         "bg_top": "#0F291E", "bg_bottom": "#050B08",
         "primary": "#10B981", "primary_glow": "rgba(16,185,129,0.4)",
-        "accent": "#E2E8F0", "btn_grad": "linear-gradient(135deg, #10B981, #047857)",
+        "accent": "#E2E8F0",
+        "btn_grad": "linear-gradient(135deg, #10B981, #047857)",
         "card_bg": "rgba(15, 30, 22, 0.6)"
     },
     "Montréal Canadiens": {
         "bg_top": "#2E0F15", "bg_bottom": "#0B1121",
         "primary": "#EF4444", "primary_glow": "rgba(239,68,68,0.4)",
-        "accent": "#60A5FA", "btn_grad": "linear-gradient(135deg, #EF4444, #1E3A8A)",
+        "accent": "#60A5FA",
+        "btn_grad": "linear-gradient(135deg, #EF4444, #1E3A8A)",
         "card_bg": "rgba(30, 15, 20, 0.6)"
     },
     "Saint-Louis Blues": {
         "bg_top": "#0F172A", "bg_bottom": "#020617",
         "primary": "#3B82F6", "primary_glow": "rgba(59,130,246,0.4)",
-        "accent": "#FACC15", "btn_grad": "linear-gradient(135deg, #3B82F6, #1D4ED8)",
+        "accent": "#FACC15",
+        "btn_grad": "linear-gradient(135deg, #3B82F6, #1D4ED8)",
         "card_bg": "rgba(15, 25, 45, 0.6)"
     },
     "Vegas Golden Knights": {
         "bg_top": "#272215", "bg_bottom": "#111315",
         "primary": "#D4AF37", "primary_glow": "rgba(212,175,55,0.4)",
-        "accent": "#94A3B8", "btn_grad": "linear-gradient(135deg, #D4AF37, #856014)",
+        "accent": "#94A3B8",
+        "btn_grad": "linear-gradient(135deg, #D4AF37, #856014)",
         "card_bg": "rgba(35, 30, 20, 0.6)"
     },
     "Chicago Black Hawks": {
         "bg_top": "#2A0A0A", "bg_bottom": "#0A0A0A",
         "primary": "#EF4444", "primary_glow": "rgba(239,68,68,0.4)",
-        "accent": "#F8FAFC", "btn_grad": "linear-gradient(135deg, #EF4444, #991B1B)",
+        "accent": "#F8FAFC",
+        "btn_grad": "linear-gradient(135deg, #EF4444, #991B1B)",
         "card_bg": "rgba(30, 10, 10, 0.6)"
     },
     "Seattle Kraken": {
         "bg_top": "#081E2D", "bg_bottom": "#030B14",
         "primary": "#67E8F9", "primary_glow": "rgba(103,232,249,0.4)",
-        "accent": "#F97316", "btn_grad": "linear-gradient(135deg, #06B6D4, #0369A1)",
+        "accent": "#F97316",
+        "btn_grad": "linear-gradient(135deg, #06B6D4, #0369A1)",
         "card_bg": "rgba(10, 25, 40, 0.6)"
     },
     "Buffalo Sabres": {
         "bg_top": "#0B1B36", "bg_bottom": "#050A14",
         "primary": "#FACC15", "primary_glow": "rgba(250,204,21,0.4)",
-        "accent": "#60A5FA", "btn_grad": "linear-gradient(135deg, #3B82F6, #FACC15)",
+        "accent": "#60A5FA",
+        "btn_grad": "linear-gradient(135deg, #3B82F6, #FACC15)",
         "card_bg": "rgba(15, 25, 45, 0.6)"
     },
     "Philadelphia Flyers": {
         "bg_top": "#2D1608", "bg_bottom": "#0A0502",
         "primary": "#F97316", "primary_glow": "rgba(249,115,22,0.4)",
-        "accent": "#F8FAFC", "btn_grad": "linear-gradient(135deg, #F97316, #111111)",
+        "accent": "#F8FAFC",
+        "btn_grad": "linear-gradient(135deg, #F97316, #111111)",
         "card_bg": "rgba(35, 15, 5, 0.6)"
     },
     "UCKA MOCKBA": {
         "bg_top": "#2A0A10", "bg_bottom": "#0A1020",
         "primary": "#E11D48", "primary_glow": "rgba(225,29,72,0.4)",
-        "accent": "#FBBF24", "btn_grad": "linear-gradient(135deg, #E11D48, #881337)",
+        "accent": "#FBBF24",
+        "btn_grad": "linear-gradient(135deg, #E11D48, #881337)",
         "card_bg": "rgba(30, 10, 15, 0.6)"
     },
     "New-York Rangers": {
         "bg_top": "#0A1930", "bg_bottom": "#050814",
         "primary": "#3B82F6", "primary_glow": "rgba(59,130,246,0.4)",
-        "accent": "#EF4444", "btn_grad": "linear-gradient(135deg, #3B82F6, #1E3A8A)",
+        "accent": "#EF4444",
+        "btn_grad": "linear-gradient(135deg, #3B82F6, #1E3A8A)",
         "card_bg": "rgba(10, 20, 40, 0.6)"
     },
     "Vancouver Canucks": {
         "bg_top": "#0A1C2A", "bg_bottom": "#051012",
         "primary": "#10B981", "primary_glow": "rgba(16,185,129,0.4)",
-        "accent": "#3B82F6", "btn_grad": "linear-gradient(135deg, #3B82F6, #10B981)",
+        "accent": "#3B82F6",
+        "btn_grad": "linear-gradient(135deg, #3B82F6, #10B981)",
         "card_bg": "rgba(10, 25, 30, 0.6)"
     }
 }
@@ -668,7 +655,8 @@ THEMES = {
 DEFAULT_THEME = {
     "bg_top": "#1E293B", "bg_bottom": "#0B1120",
     "primary": "#38BDF8", "primary_glow": "rgba(56,189,248,0.4)",
-    "accent": "#94A3B8", "btn_grad": "linear-gradient(135deg, #0284C7, #0369A1)",
+    "accent": "#94A3B8",
+    "btn_grad": "linear-gradient(135deg, #0284C7, #0369A1)",
     "card_bg": "rgba(30, 41, 59, 0.5)"
 }
 
@@ -697,7 +685,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-def build_ranking_html(rank_list, score_key, top_n=5):
+def build_ranking_html(rank_list, score_key, top_n=12):
     html = ""
     for i in range(min(top_n, len(rank_list))):
         team, pts = rank_list[i]['team'], rank_list[i][score_key]
@@ -713,7 +701,9 @@ tab_equipes, tab_transactions, tab_reglements, tab_repechage, tab_recrues = st.t
 # ONGLET 1 : ÉQUIPES & PRIX
 # =========================================================
 with tab_equipes:
-    top_gauche, top_droite = st.columns([1.1, 1.9], vertical_alignment="top")
+    limites = TEAM_QUOTAS.get(team_slug, {"att": 25, "def": 11, "gard": 4})
+
+    top_gauche, top_droite = st.columns([0.95, 2.05], vertical_alignment="top")
     with top_gauche:
         c_logo, c_title = st.columns([1, 4], vertical_alignment="center")
         with c_logo: st.image(TEAM_LOGOS[active_team_name], width=90)
@@ -728,13 +718,60 @@ with tab_equipes:
             st.rerun()
 
     with top_droite:
-        st.markdown("<h4 style='margin:0 0 8px 0; text-align:center; color: #94A3B8; font-weight: 800; letter-spacing: 1px;'>💰 PRIX OFFICIELS & TOP 5 (PHDM)</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='margin:0 0 10px 0; text-align:center; color: #94A3B8; font-weight: 800; font-size: 1.15rem; letter-spacing: 1px;'>💰 PRIX OFFICIELS & CLASSEMENT COMPLET (PHDM)</h4>", unsafe_allow_html=True)
         cl1, cl2, cl3, cl4 = st.columns(4)
-        card_style = "background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);"
-        with cl1: st.markdown(f"<div style='{card_style}'><div style='font-weight: 900; color: #F59E0B; font-size: 0.8rem; border-bottom: 2px solid #F59E0B; padding-bottom: 4px; text-align: center; letter-spacing: 0.5px;'>1. GAGNANT DU POOL</div><div style='margin-top: 8px; font-size: 0.8rem; line-height: 1.4;'>{build_ranking_html(rank_general, 'total', 5)}</div></div>", unsafe_allow_html=True)
-        with cl2: st.markdown(f"<div style='{card_style}'><div style='font-weight: 900; color: #EF4444; font-size: 0.8rem; border-bottom: 2px solid #EF4444; padding-bottom: 4px; text-align: center; letter-spacing: 0.5px;'>2. MEILLEURS ATT</div><div style='margin-top: 8px; font-size: 0.8rem; line-height: 1.4;'>{build_ranking_html(rank_att, 'att', 5)}</div></div>", unsafe_allow_html=True)
-        with cl3: st.markdown(f"<div style='{card_style}'><div style='font-weight: 900; color: #38BDF8; font-size: 0.8rem; border-bottom: 2px solid #38BDF8; padding-bottom: 4px; text-align: center; letter-spacing: 0.5px;'>3. MEILLEURS DÉF</div><div style='margin-top: 8px; font-size: 0.8rem; line-height: 1.4;'>{build_ranking_html(rank_def, 'def', 5)}</div></div>", unsafe_allow_html=True)
-        with cl4: st.markdown(f"<div style='{card_style}'><div style='font-weight: 900; color: #10B981; font-size: 0.8rem; border-bottom: 2px solid #10B981; padding-bottom: 4px; text-align: center; letter-spacing: 0.5px;'>4. MEILLEURS GARD</div><div style='margin-top: 8px; font-size: 0.8rem; line-height: 1.4;'>{build_ranking_html(rank_gard, 'gard', 5)}</div></div>", unsafe_allow_html=True)
+        card_style = "background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); min-height: 360px;"
+        
+        with cl1:
+            st.markdown(f"""
+            <div style='{card_style}'>
+                <div style='font-weight: 900; color: #F59E0B; font-size: 1.02rem; border-bottom: 2px solid #F59E0B; padding-bottom: 6px; text-align: center; letter-spacing: 0.5px;'>
+                    1. GAGNANT DU POOL
+                </div>
+                <div style='margin-top: 10px; font-size: 0.92rem; line-height: 1.5;'>
+                    {build_ranking_html(rank_general, 'total', 12)}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with cl2:
+            st.markdown(f"""
+            <div style='{card_style}'>
+                <div style='font-weight: 900; color: #EF4444; font-size: 1.02rem; border-bottom: 2px solid #EF4444; padding-bottom: 6px; text-align: center; letter-spacing: 0.5px;'>
+                    2. MEILLEURS ATT
+                </div>
+                <div style='margin-top: 10px; font-size: 0.92rem; line-height: 1.5;'>
+                    {build_ranking_html(rank_att, 'att', 12)}
+                    <span style='color: #94A3B8; font-size: 0.82rem;'><br>❌ 1er Général exclu</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with cl3:
+            st.markdown(f"""
+            <div style='{card_style}'>
+                <div style='font-weight: 900; color: #38BDF8; font-size: 1.02rem; border-bottom: 2px solid #38BDF8; padding-bottom: 6px; text-align: center; letter-spacing: 0.5px;'>
+                    3. MEILLEURS DÉF
+                </div>
+                <div style='margin-top: 10px; font-size: 0.92rem; line-height: 1.5;'>
+                    {build_ranking_html(rank_def, 'def', 12)}
+                    <span style='color: #94A3B8; font-size: 0.82rem;'><br>❌ 1er Général exclu</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with cl4:
+            st.markdown(f"""
+            <div style='{card_style}'>
+                <div style='font-weight: 900; color: #10B981; font-size: 1.02rem; border-bottom: 2px solid #10B981; padding-bottom: 6px; text-align: center; letter-spacing: 0.5px;'>
+                    4. MEILLEURS GARD
+                </div>
+                <div style='margin-top: 10px; font-size: 0.92rem; line-height: 1.5;'>
+                    {build_ranking_html(rank_gard, 'gard', 12)}
+                    <span style='color: #94A3B8; font-size: 0.82rem;'><br>❌ 1er Général exclu</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.divider()
     df_att, df_banc_att = st.session_state[f"{team_slug}_df_att"], st.session_state[f"{team_slug}_df_banc_att"]
@@ -742,19 +779,13 @@ with tab_equipes:
     df_gard, df_banc_gard = st.session_state[f"{team_slug}_df_gard"], st.session_state[f"{team_slug}_df_banc_gard"]
 
     nb_att_tot, nb_def_tot, nb_gard_tot = len(df_att)+len(df_banc_att), len(df_def)+len(df_banc_def), len(df_gard)+len(df_banc_gard)
-    nb_tot_concession = nb_att_tot + nb_def_tot + nb_gard_tot
     
-    stat_att = (19 <= len(df_att) <= 25) and (nb_att_tot <= 80)
-    stat_def = (7 <= len(df_def) <= 11) and (nb_def_tot <= 30)
-    stat_gard = (2 <= len(df_gard) <= 4) and (nb_gard_tot <= 18)
-    stat_globale = (nb_tot_concession <= 128)
-
     q1, q2, q3, q4 = st.columns(4)
     q_card_style = f"background: {t['card_bg']}; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; text-align: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);"
-    with q1: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🏒 ATTAQUANTS {'✅' if stat_att else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_att)} / [19-25]</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total Concession :</b> {nb_att_tot} / 80 max</div></div>", unsafe_allow_html=True)
-    with q2: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🛡️ DÉFENSEURS {'✅' if stat_def else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_def)} / [7-11]</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total Concession :</b> {nb_def_tot} / 30 max</div></div>", unsafe_allow_html=True)
-    with q3: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🥅 GARDIENS {'✅' if stat_gard else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_gard)} / [2-4]</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total Concession :</b> {nb_gard_tot} / 18 max</div></div>", unsafe_allow_html=True)
-    with q4: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🏢 TOTAL CONCESSION</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Effectif :</b> {nb_tot_concession} / 128 max</div><div style='font-size: 0.85rem; font-weight: 800; color: {'#34D399' if stat_globale else '#EF4444'};'>{'✅ Conforme' if stat_globale else '⚠️ Quota dépassé'}</div></div>", unsafe_allow_html=True)
+    with q1: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🏒 ATTAQUANTS {'✅' if (len(df_att) <= limites['att'] and nb_att_tot <= 80) else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_att)} / {limites['att']}</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total :</b> {nb_att_tot}</div></div>", unsafe_allow_html=True)
+    with q2: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🛡️ DÉFENSEURS {'✅' if (len(df_def) <= limites['def'] and nb_def_tot <= 30) else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_def)} / {limites['def']}</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total :</b> {nb_def_tot}</div></div>", unsafe_allow_html=True)
+    with q3: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🥅 GARDIENS {'✅' if (len(df_gard) <= limites['gard'] and nb_gard_tot <= 18) else '⚠️'}</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Partants :</b> {len(df_gard)} / {limites['gard']}</div><div style='font-size: 0.85rem; color: #94A3B8;'><b>Total :</b> {nb_gard_tot}</div></div>", unsafe_allow_html=True)
+    with q4: st.markdown(f"<div style='{q_card_style}'><div style='font-size: 0.85rem; font-weight: 900; color:{t['primary']};'>🏢 TOTAL CONCESSION</div><div style='font-size: 1rem; margin-top: 4px; color:#F8FAFC;'><b>Effectif :</b> {nb_att_tot+nb_def_tot+nb_gard_tot} / 128 max</div><div style='font-size: 0.85rem; font-weight: 800; color: {'#34D399' if (nb_att_tot+nb_def_tot+nb_gard_tot <= 128) else '#EF4444'};'>{'✅ Conforme' if (nb_att_tot+nb_def_tot+nb_gard_tot <= 128) else '⚠️ Quota dépassé'}</div></div>", unsafe_allow_html=True)
 
     def find_1_to_1_swaps(df_act, df_banc):
         k = 0
@@ -770,117 +801,103 @@ with tab_equipes:
     r_def, g_def = find_1_to_1_swaps(df_def, df_banc_def)
     r_gard, g_gard = find_1_to_1_swaps(df_gard, df_banc_gard)
 
-    # =========================================================
-    # BARRE D'ACTION (VERROUILLÉE POUR LES VISITEURS)
-    # =========================================================
     c1, c2, c3 = st.columns([4, 1.2, 1.2])
     with c1: st.info(f"🟢 **Statut API LNH** : {api_status}")
-    
     with c2:
-        if is_admin:
-            if st.button("🔄 ACTUALISER API", use_container_width=True):
-                st.cache_data.clear()
-                for slg in SLUG_MAP.values():
-                    for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
-                        if f"{slg}_df_{role}" in st.session_state:
-                            cur_df = st.session_state[f"{slg}_df_{role}"]
-                            for idx_p, row_p in cur_df.iterrows():
-                                t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
-                                cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
-                            st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state()
-                st.rerun()
-        else:
-            st.button("🔄 ACTUALISER API", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
+        if st.button("🔄 ACTUALISER API", use_container_width=True):
+            st.cache_data.clear()
+            for slg in SLUG_MAP.values():
+                for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
+                    if f"{slg}_df_{role}" in st.session_state:
+                        cur_df = st.session_state[f"{slg}_df_{role}"]
+                        for idx_p, row_p in cur_df.iterrows():
+                            t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
+                            cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
+                        st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+            for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+            save_state()
+            st.rerun()
             
     with c3:
-        if is_admin:
-            if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary"):
-                init_rosters_from_csv()
-                init_recrues_from_csv()
-                abbrs = list(TEAM_ABBR_MAP.values())
-                for annee in ["2026", "2027", "2028"]:
-                    st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
-                import_excel_transactions()
-                for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state()
-                st.success("✅ Base de données rechargée avec succès !")
-                st.rerun()
-        else:
-            st.button("📥 RECHARGER BASE", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
+        if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary"):
+            init_rosters_from_csv()
+            init_recrues_from_csv()
+            abbrs = list(TEAM_ABBR_MAP.values())
+            for annee in ["2026", "2027", "2028"]:
+                st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
+            import_excel_transactions()
+            for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+            save_state()
+            st.success("✅ Base de données rechargée avec succès !")
+            st.rerun()
 
     c_tog, c_btn = st.columns(2)
     with c_tog: afficher_couleurs = st.toggle("🎨 **Afficher les couleurs d'alerte de remplacement**", value=True)
     with c_btn:
-        if is_admin:
-            if st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True):
-                for a_df, b_df, rl, gl, ka, kb in [(df_att, df_banc_att, r_att, g_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"), (df_def, df_banc_def, r_def, g_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"), (df_gard, df_banc_gard, r_gard, g_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard")]:
-                    if rl and gl:
-                        st.session_state[ka] = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        st.session_state[kb] = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        st.session_state[ka]["No"], st.session_state[kb]["No"] = range(1, len(st.session_state[ka])+1), range(1, len(st.session_state[kb])+1)
-                save_state()
-                st.rerun()
-        else:
-            st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
+        if st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True):
+            for a_df, b_df, rl, gl, ka, kb in [(df_att, df_banc_att, r_att, g_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"), (df_def, df_banc_def, r_def, g_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"), (df_gard, df_banc_gard, r_gard, g_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard")]:
+                if rl and gl:
+                    st.session_state[ka] = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    st.session_state[kb] = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    st.session_state[ka]["No"], st.session_state[kb]["No"] = range(1, len(st.session_state[ka])+1), range(1, len(st.session_state[kb])+1)
+            save_state()
+            st.rerun()
 
-    # =========================================================
-    # PERMUTATION MANUELLE (MASQUÉE POUR LES VISITEURS)
-    # =========================================================
-    if is_admin:
-        with st.expander("🛠️ PERMUTATION MANUELLE (Monter, descendre ou combler)"):
-            pos_choix = st.radio("Position à modifier :", ["Attaquants", "Défenseurs", "Gardiens"], horizontal=True, key=f"man_pos_{team_slug}")
-            if pos_choix == "Attaquants": 
-                df_p, df_b, k_p, k_b, min_p, max_p = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att", 19, 25
-            elif pos_choix == "Défenseurs": 
-                df_p, df_b, k_p, k_b, min_p, max_p = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def", 7, 11
-            else: 
-                df_p, df_b, k_p, k_b, min_p, max_p = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard", 2, 4
-                
-            real_p_list = [p for p in df_p["Joueurs"].tolist() if p != "[Carreau Libre]"]
-            real_b_list = df_b["Joueurs"].tolist()
+    with st.expander("🛠️ PERMUTATION MANUELLE (Monter, descendre ou combler)"):
+        pos_choix = st.radio("Position à modifier :", ["Attaquants", "Défenseurs", "Gardiens"], horizontal=True, key=f"man_pos_{team_slug}")
+        min_att, min_def, min_gard = 19, 7, 2
+        
+        if pos_choix == "Attaquants": 
+            df_p, df_b, k_p, k_b = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"
+            min_p, max_p = min(min_att, limites["att"]), limites["att"]
+        elif pos_choix == "Défenseurs": 
+            df_p, df_b, k_p, k_b = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"
+            min_p, max_p = min(min_def, limites["def"]), limites["def"]
+        else: 
+            df_p, df_b, k_p, k_b = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard"
+            min_p, max_p = min(min_gard, limites["gard"]), limites["gard"]
             
-            p_choices = real_p_list.copy()
-            if len(real_p_list) < max_p: p_choices = ["[Combler un carreau libre (Aucun départ)]"] + p_choices
-            b_choices = real_b_list.copy()
-            if len(real_p_list) > min_p: b_choices = ["[Laisser un carreau libre (Aucune montée)]"] + b_choices
-                
-            col_m1, col_m2, col_m3 = st.columns([2.5, 2.5, 1.2], vertical_alignment="bottom")
-            with col_m1: p_sel = st.selectbox("📉 Joueur partant à descendre au banc :", p_choices, key=f"p_sel_{team_slug}")
-            with col_m2: b_sel = st.selectbox("📈 Joueur du banc à monter partant :", b_choices, key=f"b_sel_{team_slug}")
-            with col_m3:
-                if st.button("🔄 EXÉCUTER", key=f"btn_perm_{team_slug}", use_container_width=True):
-                    if p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
-                        row_b = df_b[df_b["Joueurs"] == b_sel].copy()
-                        new_b = df_b[df_b["Joueurs"] != b_sel].reset_index(drop=True)
-                        new_p = pd.concat([df_p[df_p["Joueurs"] != "[Carreau Libre]"], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
-                    elif b_sel.startswith("[Laisser") and not p_sel.startswith("[Combler"):
-                        row_p = df_p[df_p["Joueurs"] == p_sel].copy()
-                        new_p = df_p[df_p["Joueurs"] != p_sel].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_b = pd.concat([df_b, row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
-                    elif not p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
-                        row_p = df_p[df_p["Joueurs"] == p_sel].copy()
-                        row_b = df_b[df_b["Joueurs"] == b_sel].copy()
-                        new_p = pd.concat([df_p[df_p["Joueurs"] != p_sel], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_b = pd.concat([df_b[df_b["Joueurs"] != b_sel], row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
-                        st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
-    else:
-        st.info("ℹ️ **Mode Consultation (Lecture seule)** : L'alignement et les permutations sont réservés au commissaire.")
+        real_p_list = [p for p in df_p["Joueurs"].tolist() if p != "[Carreau Libre]"]
+        real_b_list = df_b["Joueurs"].tolist()
+        
+        p_choices = real_p_list.copy()
+        if len(real_p_list) < max_p: p_choices = ["[Combler un carreau libre (Aucun départ)]"] + p_choices
+        b_choices = real_b_list.copy()
+        if len(real_p_list) > min_p: b_choices = ["[Laisser un carreau libre (Aucune montée)]"] + b_choices
+            
+        col_m1, col_m2, col_m3 = st.columns([2.5, 2.5, 1.2], vertical_alignment="bottom")
+        with col_m1: p_sel = st.selectbox("📉 Joueur partant à descendre au banc :", p_choices, key=f"p_sel_{team_slug}")
+        with col_m2: b_sel = st.selectbox("📈 Joueur du banc à monter partant :", b_choices, key=f"b_sel_{team_slug}")
+        with col_m3:
+            if st.button("🔄 EXÉCUTER", key=f"btn_perm_{team_slug}", use_container_width=True):
+                if p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
+                    row_b = df_b[df_b["Joueurs"] == b_sel].copy()
+                    new_b = df_b[df_b["Joueurs"] != b_sel].reset_index(drop=True)
+                    new_p = pd.concat([df_p[df_p["Joueurs"] != "[Carreau Libre]"], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                    save_state(); st.rerun()
+                elif b_sel.startswith("[Laisser") and not p_sel.startswith("[Combler"):
+                    row_p = df_p[df_p["Joueurs"] == p_sel].copy()
+                    new_p = df_p[df_p["Joueurs"] != p_sel].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    new_b = pd.concat([df_b, row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                    save_state(); st.rerun()
+                elif not p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
+                    row_p = df_p[df_p["Joueurs"] == p_sel].copy()
+                    row_b = df_b[df_b["Joueurs"] == b_sel].copy()
+                    new_p = pd.concat([df_p[df_p["Joueurs"] != p_sel], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    new_b = pd.concat([df_b[df_b["Joueurs"] != b_sel], row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
+                    st.session_state[k_p], st.session_state[k_b] = new_p, new_b
+                    save_state(); st.rerun()
 
     def fill_empty(df, m):
         if len(df) < m: return pd.concat([df, pd.DataFrame([{"No": i, "Joueurs": "[Carreau Libre]", "T": "—", "A": 0, "EXP": 0, "PJ": 0, "Pts": 0} for i in range(len(df)+1, m+1)])], ignore_index=True)
         return df.copy()
 
-    df_att_disp, df_def_disp, df_gard_disp = fill_empty(df_att, 25), fill_empty(df_def, 11), fill_empty(df_gard, 4)
+    df_att_disp, df_def_disp, df_gard_disp = fill_empty(df_att, limites["att"]), fill_empty(df_def, limites["def"]), fill_empty(df_gard, limites["gard"])
 
     def color_part(r, rl): return ['background-color: transparent; color: #475569; font-style: italic']*len(r) if r["Joueurs"]=="[Carreau Libre]" else (['background-color: #7F1D1D; color: #FECACA; font-weight: bold']*len(r) if afficher_couleurs and r["Joueurs"] in rl else ['background-color: rgba(15,23,42,0.6); color: #F8FAFC']*len(r))
     def color_banc(r, gl): return ['background-color: #064E3B; color: #D1FAE5; font-weight: bold']*len(r) if afficher_couleurs and r["Joueurs"] in gl else (['background-color: rgba(30,41,59,0.4); color: #94A3B8']*len(r))
@@ -889,15 +906,15 @@ with tab_equipes:
 
     co1, co2, co3 = st.columns([1, 1, 1])
     with co1:
-        st.subheader(f"🏒 Attaquants Partants ({len(df_att)} / 25)")
+        st.subheader(f"🏒 Attaquants Partants ({len(df_att)} / {limites['att']})")
         st.dataframe(df_att_disp.style.apply(color_part, rl=r_att, axis=1), hide_index=True, use_container_width=True, height=540, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Attaquants : {int(df_att['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
-        st.subheader(f"🛡️ Défenseurs Partants ({len(df_def)} / 11)")
+        st.subheader(f"🛡️ Défenseurs Partants ({len(df_def)} / {limites['def']})")
         st.dataframe(df_def_disp.style.apply(color_part, rl=r_def, axis=1), hide_index=True, use_container_width=True, height=280, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Défenseurs : {int(df_def['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
-        st.subheader(f"🥅 Gardiens Partants ({len(df_gard)} / 4)")
+        st.subheader(f"🥅 Gardiens Partants ({len(df_gard)} / {limites['gard']})")
         st.dataframe(df_gard_disp.style.apply(color_part, rl=r_gard, axis=1), hide_index=True, use_container_width=True, height=160, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Gardiens : {int(df_gard['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
@@ -918,97 +935,192 @@ with tab_equipes:
 with tab_transactions:
     st.markdown(f"<h1 style='color:{t['primary']};'>🔄 CENTRE OFFICIEL DES TRANSACTIONS</h1>", unsafe_allow_html=True)
     path_excel = get_file_path("gestion_phdm.xlsx")
-    
     if os.path.exists(path_excel):
         try:
-            xls = pd.ExcelFile(path_excel)
-            sheet_name = find_sheet_by_keyword(path_excel, ["transaction", "echange", "trade"])
+            df_t_show = pd.read_excel(path_excel, sheet_name="Transactions")
+            df_t_show = clean_excel_dataframe(df_t_show)
 
-            if sheet_name:
-                df_t_show = pd.read_excel(path_excel, sheet_name=sheet_name)
-                df_t_show = clean_excel_dataframe(df_t_show)
+            # Identification et conversion du format de date (ex: 12 nov 2026 sans heure)
+            cols_date = [c for c in df_t_show.columns if "date" in str(c).lower()]
+            col_target = cols_date[0] if cols_date else (df_t_show.columns[0] if len(df_t_show.columns) > 0 else None)
+            
+            if col_target:
+                df_t_show[col_target] = df_t_show[col_target].apply(format_date_fr)
 
-                cols_date = [c for c in df_t_show.columns if "date" in str(c).lower()]
-                col_target = cols_date[0] if cols_date else (df_t_show.columns[0] if len(df_t_show.columns) > 0 else None)
-                
-                if col_target:
-                    df_t_show[col_target] = df_t_show[col_target].apply(format_date_fr)
-
-                styler_t = df_t_show.style
-                try: styler_t = styler_t.map(color_empty_cells)
-                except AttributeError: styler_t = styler_t.applymap(color_empty_cells)
-                st.dataframe(styler_t, use_container_width=True, hide_index=True)
-            else:
-                st.warning(f"⚠️ Aucun onglet de transactions détecté dans `{os.path.basename(path_excel)}`.")
-                st.info(f"📋 **Onglets présents :** {', '.join([f'`{s}`' for s in xls.sheet_names])}")
-                
+            styler_t = df_t_show.style
+            try: styler_t = styler_t.map(color_empty_cells)
+            except AttributeError: styler_t = styler_t.applymap(color_empty_cells)
+            st.dataframe(styler_t, use_container_width=True, hide_index=True, height=680)
         except PermissionError:
             st.error("⚠️ Le fichier Excel est actuellement ouvert ! Fermez Microsoft Excel puis rafraîchissez la page.")
         except Exception as e:
-            st.warning(f"Impossible de lire le fichier de transactions : {e}")
+            st.warning(f"Impossible de lire l'onglet 'Transactions' : {e}")
     else: 
         st.info("Fichier `gestion_phdm.xlsx` introuvable.")
 
 # =========================================================
-# ONGLET 3 : RÈGLEMENTS DU POOL
+# ONGLET 3 : RÈGLEMENTS OFFICIELS DU POOL (MISE À JOUR 2024)
 # =========================================================
 with tab_reglements:
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #1E1B4B, #0F172A); border: 2px solid {t['primary']}; padding: 20px; border-radius: 14px; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);'>
-        <h1 style='margin:0; font-weight:900; color: #FFFFFF; font-size: 2.3rem; letter-spacing: 2px;'>📜 RÈGLEMENTS DU POOL PHDM-2</h1>
+        <h1 style='margin:0; font-weight:900; color: #FFFFFF; font-size: 2.3rem; letter-spacing: 2px;'>📜 RÈGLEMENTS DU PHDM-2</h1>
         <div style='background: #EA580C; color: #FFFFFF; font-weight: 900; display: inline-block; padding: 6px 20px; border-radius: 20px; font-size: 1.1rem; margin-top: 10px; letter-spacing: 1px;'>
-            SAISON OFFICIELLE 2026-2027
+            MISE À JOUR : 22 NOVEMBRE 2024
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     with st.expander("⚖️ ARTICLES FONDAMENTAUX (ART. 001 À 003) — DIRECTION ET RÈGLEMENT BETTMAN", expanded=True):
         st.markdown("""
-        * **ART 001** : Le président et le statisticien ont des **pouvoirs exceptionnels pour l'orientation des règles du pool** qu'ils peuvent utiliser à leur guise pour assurer une fluidité dans les opérations *(règlement Bettman)*. Le jugement et le gros bon sens du **STATISTICIEN ET DU PRÉSIDENT AURONT TOUJOURS PRÉSÉANCE SUR TOUS LES ARTICLES**.
-        * **ART 002** : Si vous avez une plainte, le seul moyen de communication permis sera le cellulaire ou par courriel en privé avec le président.
-        * **ART 003** : Il n'y a pas de vote démocratique pour changer le président OU le statisticien. Ceux-ci sont nommés à vie.
+        * **ART 001** : Le président et le statisticien ont des **pouvoirs exceptionnels pour l'orientation des règles du pool** qu'ils peuvent utiliser à leur guise pour assurer une fluidité dans les opérations *(règlement Bettman)*. Donc, **IMPORTANT**, les règles du pool sont un cadre et non une fin. Le jugement et le gros bon sens du **STATISTICIEN ET DU PRÉSIDENT AURONT TOUJOURS PRÉSÉANCE SUR TOUS LES ARTICLES**. C'est le pouvoir du règlement Bettman.
+        * **ART 002** : Si vous avez une plainte, **celui qui prend les plaintes est le président et le seul moyen de communication permise sera le cellulaire ou par courriel en privé**. Si vous vous sentez lésé, et que vous exprimez votre frustration par courriel en mettant un autre DG, automatiquement **vous perdez votre cause sans discussion**. Si vous insistez à contester en mettant tout le monde en CC, le DG en question **PERDRA SON 1ER CHOIX AU PROCHAIN REPÊCHAGE**.
+        * **ART 003** : Il n'y a **pas de vote démocratique** pour changer le président OU le statisticien. Ceux-ci sont **nommés à vie**.
         """)
 
     col_r1, col_r2 = st.columns(2)
 
     with col_r1:
-        with st.expander("💰 SECTION 1 — PRIX DISTRIBUÉS", expanded=True):
+        with st.expander("💰 SECTION 1 — COÛT DE LA FRANCHISE ET PRIX DISTRIBUÉS", expanded=True):
             st.markdown("""
-            * **Art. 101** : Coût d'une franchise par année : **50$**.
-            * **Art. 102** : Distribution des prix :
+            * **Art. 101** : Le coût d'une franchise par année est de **50$**. Le paiement doit être acquitté au moment de la première rencontre en début de saison.
+            * **Art. 102** : Les prix sont distribués à la fin de la saison de la façon suivante :
               * 🥇 **1- GAGNANT DU POOL :** 345$
               * 🏒 **2- GAGNANT POSITION ATTAQUANTS :** 50$
               * 🛡️ **3- GAGNANT DES DÉFENSEURS :** 50$
               * 🥅 **4- GAGNANT DES GARDIENS :** 50$
               * 📊 **6- STATISTICIEN :** 55$
+            * **Art 103** : Le gagnant du pool **ne peut pas gagner les positions de l'Art. 102**.
+            * **Art 104** : SI UN PARTICIPANT DÉMISSIONNE DURANT LA SAISON, **AUCUN REMBOURSEMENT NE SERA FAIT** VU QUE LA SOMME A DÉJÀ ÉTÉ ENGAGÉE.
             """)
 
-        with st.expander("👥 SECTION 3 — QUOTAS DES ALIGNEMENTS", expanded=True):
+        with st.expander("📅 SECTION 2 — LISTE DES RENCONTRES DU POOL PHDM-2"):
             st.markdown("""
-            * **Art. 301** : Une concession doit se composer d'un **maximum de 80 attaquants, 30 défenseurs et 18 gardiens (128 joueurs au total)**.
-            * **Art 303** : Alignement partant :
-              * Entre 19 et 25 attaquants
-              * Entre 7 et 11 défenseurs
-              * Entre 2 et 4 gardiens
+            * **Art. 201** : Lors des réunions, aucune décision ou vote ne peuvent être pris sans le quorum. Pour qu'il y ait quorum, il doit y avoir **50% + 1** des directeurs généraux présents à la rencontre.
+            * **Art. 202** : Une rencontre minimale est prévue lors d'une année (draft amateur), rencontre physique ou virtuelle.
+            * **Art. 203** : Dans la mesure du possible, les rencontres se déroulent sur Messenger par Facebook.
+            * **Art. 204** : Lors de la rencontre du repêchage amateur, **ON DÉCIDE DES CHANGEMENTS DE RÈGLEMENTS**.
             """)
 
-        with st.expander("📊 SECTION 4 — CALCUL DES POINTS"):
+        with st.expander("👥 SECTION 3 — RÈGLES PRÉCISES POUR LES ALIGNEMENTS & QUOTAS", expanded=True):
             st.markdown("""
-            * Attaquants & Défenseurs : But = 1 pt, Passe = 1 pt.
-            * Gardiens : Victoire = 2 pts, Prolongation = 1 pt, Blanchissage = 1 pt supplémentaire.
+            * **Art. 301** : Une concession doit se composer d'un **maximum de 80 attaquants, 30 défenseurs et 18 gardiens (128 joueurs au total)**. Un directeur général qui ne respecte pas ce quota doit obligatoirement libérer un joueur dans les secondes qui suivent le repêchage d'un nouveau joueur. Un DG peut faire une offre sur-le-champ pour le joueur libéré, sinon il est scratché. Si nous voulons échanger des joueurs que nous allons libérer, il faut le faire avant le repêchage.
+            * **Art 302** : Un alignement partant en début d'année est constitué de :
+              * **A)** 22 attaquants
+              * **B)** 9 défenseurs
+              * **C)** 3 gardiens
+            * **Art 303** : Le nombre de joueurs dans un alignement peut être différent de celui du départ à la condition qu'il respecte les barèmes suivants :
+              * **A)** Un Minimum de 19 et un Maximum de 25 attaquants
+              * **B)** Un Minimum de 7 et un Maximum de 11 défenseurs
+              * **C)** Un Minimum de 2 et un Maximum de 4 gardiens
+            * **Art 304** : Lorsqu'il y a un joueur qui peut jouer autant comme défenseur qu'attaquant, l'ensemble des DGs, à la majorité, décident à la première rencontre en octobre la position du joueur. Le joueur en question devra toutefois rester à cette position toute la saison.
+            * **ART 305** : En début de saison, vous pouvez mettre tout genre de joueur selon leurs statuts, **SAUF qu'après les 30 matchs, on doit obligatoirement mettre les meilleurs sur le partant**.
+            """)
+
+        with st.expander("📊 SECTION 4 — CALCUL OFFICIEL DES POINTS"):
+            st.markdown("""
+            * **Art. 401** : Le calcul des points pour les attaquants et les défenseurs se fait comme suit :
+              * **A)** Un but équivaut à un point (1 pt)
+              * **B)** Une mention d'aide équivaut à un point (1 pt)
+            * **Art 402** : Le calcul des points pour les gardiens se fait comme suit :
+              * **C)** Une victoire donne **2 points**
+              * **D)** Une nulle (ou défaite en prolongation / fusillade) donne **1 point**
+              * **E)** Un blanchissage donne **1 point** supplémentaire
+            * **Art 403** : Les points de chaque catégorie sont cumulés pour donner un grand total. Le gagnant du pool ne peut pas gagner les positions.
+            * **Art 404** : Le classement officiel est disponible et suivi en direct sur le site internet du pool.
+            """)
+
+        with st.expander("🚪 SECTION 5 — LIBÉRATION DE JOUEURS"):
+            st.markdown("""
+            * **Art. 501** : Un directeur général peut libérer en tout temps un joueur de sa concession. Il a la responsabilité d'en informer les autres directeurs généraux.
+            * **Art. 502** : Lors du repêchage, si un directeur général atteint la limite permise de joueurs par l'article 301, il doit obligatoirement libérer un joueur sur-le-champ. Par contre, il est permis d'être au-dessus de la limite de 128 joueurs durant l'été, **mais l'équipe doit être légale le 15 septembre de chaque année**.
             """)
 
     with col_r2:
-        with st.expander("🔁 SECTION 6 — TRANSACTIONS ET RÈGLE DU 7/10 ANS", expanded=True):
+        with st.expander("🔁 SECTION 6 — TRANSACTIONS, COLLUSION & RÈGLE DU 7/10 ANS", expanded=True):
             st.markdown("""
-            * **Art. 607** : Un joueur ne peut appartenir à une équipe plus de 7 années consécutives (10 ans pour les gardiens).
-            * **Art 610** : Un joueur au banc ne peut pas être monté parmi les partants s'il a moins de points que le joueur actif.
+            * **Art. 601** : Une transaction peut se faire durant toute l'année sauf entre la date de la fin des transactions (Trade Deadline) et la fin de la saison.
+            * **Art. 602** : Lorsqu'une transaction est conclue, elle doit être annoncée aux autres DG le lendemain au maximum, par les DG concernés.
+            * **Art 603** : Une transaction impliquant un joueur blessé n'est jamais annulée.
+            * **Art 604** : **AUCUNE TRANSACTION CONCLUE (QUELLE QUE SOIT LA TRANSACTION) NE DOIT AVOIR AUCUN COMMENTAIRE SUR LES RÉSEAUX SOCIAUX SINON RISQUE D'ÊTRE EXCLU (EXPULSION DU POOL).**
+            * **Art 605** : Un joueur transigé ne peut pas revenir dans son équipe d'origine dans la même année, mais peut y revenir dans l'entre-saison.
+            * **Art 606** : Une transaction illégale sera sanctionnée durement (exclusion du pool CAR S'IL Y A COLLUSION) si elle pose préjudice à un autre DG (se référer à l'Art 604).
+            * **Art 606.a** : S'il y a collusion, le président du pool et son adjoint feront une analyse et décideront de la marche à suivre.
+            * **Art 606.b** : Si le président et son adjoint font de la collusion, la transaction sera analysée par 2 DGs qui sont en bas de classement.
+            * **Art 607** : **Un joueur ne peut appartenir à une équipe plus de 7 années consécutives sinon il devra être soumis au repêchage, sauf 10 ans pour les gardiens.** Une année d'ancienneté est accumulée pour chaque joueur à la fin de l'année. **6 joueurs par concession peuvent s'abstenir de ce règlement (protection spéciale) :**
+              * **A :** 3 attaquants
+              * **B :** 2 défenseurs
+              * **C :** 1 gardien
+            * **Art 608** : À la date limite des transactions, essayez d'être présent sur votre ordinateur pour ne pas nuire à un DG qui essaie de gagner le pool ou à ses poursuivants.
+            * **Art 609** : Les choix aux repêchages durant la saison ne peuvent être transigés que sur **deux années ouvrables**, mais la troisième année sera ouverte de la fin de saison jusqu'au draft et après le draft on revient à 2 années ouvrables.
+            * **Art 610** : Un joueur qui est sur le banc ne peut pas être monté sur le partant s'il a moins de points que le joueur partant, et surtout s'il y a transaction.
+            * **Art 611** : Pendant la saison morte, si un club est au-dessus de la limite permise dans une des positions, il peut faire des transactions pour devenir légal ou simplement les balloter. Le concurrent doit être légal le **15 septembre de chaque année**.
             """)
 
-        with st.expander("🎟️ SECTION 7 — REPÊCHAGE ANNUEL"):
+        with st.expander("🎟️ SECTION 7 — REPÊCHAGE ANNUEL DES ESPOIRS", expanded=True):
             st.markdown("""
-            * **Art. 702** : Chaque repêchage comprend 15 rondes.
+            * **Art. 701** : Dans la mesure du possible, le repêchage doit se dérouler avant le repêchage de la LNH de chaque année.
+            * **Art. 702** : Chaque repêchage comprend **15 rondes**. Évidemment, un directeur général peut, par le biais de transactions, choisir plus de 15 joueurs.
+            * **Art 703** : Si un DG choisit un joueur qui appartient déjà à un autre DG, il peut faire un autre choix dès que l'erreur est constatée. Si c'est durant le draft, il choisit un autre joueur sur-le-champ. Si on s'aperçoit de l'erreur après le draft, le DG choisit un joueur disponible à ce moment.
+            * **Art 704** : *(SI IL Y A ABSENCE)* Lors d'un repêchage, en circonstances exceptionnelles, un DG peut faire une liste papier et demander à un autre DG de repêcher pour lui. Si le DG ne fait pas de liste et ne communique pas ses choix (FaceTime ou autre), **il ne peut pas repêcher et perd ses choix**.
+            * **Art 705** : Pour les choix aux repêchages, à chaque draft de chaque année, on ouvre le tableau officiel des choix.
+            * **Art 706** : Le repêchage se tiendra au mois de **mai ou juin de chaque année**.
             """)
+
+        with st.expander("🗳️ SECTION 8 — MODIFICATIONS AUX RÈGLEMENTS"):
+            st.markdown("""
+            * **Art. 801** : Pour la modification d'un règlement, il faut la majorité du quorum, soit **50% + 1**.
+            * **Art. 802** : Tout directeur général peut présenter des ajouts, annulations ou modifications lors d'une rencontre prévue durant l'année. **Aucune discussion, décision ou modification ayant un impact sur les règles ou les DGs ne peut se faire par Internet.** On doit obligatoirement faire le tout en personne lors de nos rencontres.
+            * **Art 803** : Lorsqu'un directeur général est absent d'une réunion, il perd son droit de vote.
+            * **Art 804** : Lorsqu'un règlement est adopté, il a une durée de vie **minimum de 2 ans** avant de pouvoir être modifié.
+            """)
+
+        with st.expander("🚑 SECTION 9 — JOUEURS BLESSÉS"):
+            st.markdown("""
+            * **ART 901** : **IL N'Y A AUCUNE RÈGLE POUR JOUEURS BLESSÉS.** *(Pas de liste des blessés distincte)*.
+            """)
+
+        with st.expander("⏰ ARTICLES 1000 À 1002 — GESTION DE FIN DE SAISON & PARTANTS"):
+            st.markdown("""
+            * **Art 1000** : Après la fermeture des transactions, le secrétaire du pool fera tous les changements de tous les DGs. La seule fois où le secrétaire consultera un DG sera quand plus de deux joueurs auront le même nombre de points (le DG tranchera). **Tous les meilleurs pointeurs devront obligatoirement être partants et les plus faibles sur le banc.**
+            * **Art 1001** : Durant la saison régulière, chaque DG a l'entière liberté d'effectuer ses changements de partants à volonté (selon les quotas).
+            * **Art 1002** : **À LA FIN DE LA SAISON, LE SECRÉTAIRE SE CHARGERA DE METTRE LES MEILLEURS POINTEURS DE TOUS SUR LES PARTANTS ET LES MOINS BONS SUR LE BANC.**
+            """)
+
+    with st.expander("🏢 SECTION 11 — EXPANSION, ÉQUIPE DISSOUTE & FORMULE DE PROTECTION", expanded=True):
+        st.markdown("""
+        * **Art 1101** : Lors du départ d'un DG, on essaie toujours de lui trouver un remplaçant en lui transmettant l'équipe telle quelle. Si aucun remplaçant n'est trouvé, on applique les **Art. 1103 et 1105**.
+        * **Art 1103** : Lorsqu'un DG démissionne et que personne ne le remplace, il y a un repêchage de dispersion effectué dans son équipe par les autres directeurs généraux. **Le DG ayant terminé dernier repêche en premier, l'avant-dernier en 2e, etc.**
+        * **Art 1104 — EXPANSION DANS LE POOL :**
+          * Chaque équipe doit protéger **UN POURCENTAGE DE JOUEURS EN FONCTION DU CLASSEMENT FINAL** (toutes positions confondues).
+          * Parmi les joueurs protégés, il doit obligatoirement y avoir au moins **2 gardiens ayant joué un minimum de 20 matchs** dans la saison précédente laissés **SANS PROTECTION**.
+          * La nouvelle équipe doit piger **10 joueurs** (toutes positions confondues) dans chaque concession existante (donc 80 joueurs au total).
+          * La nouvelle équipe pige toujours dernière au repêchage amateur. Le nouveau DG ne peut pas prendre plus d'un gardien par équipe parmi ses 10 sélections.
+          * Après avoir acquis ses joueurs et complété le repêchage annuel, le titulaire pige dans la banque de recrues ou les agents libres disponibles pour compléter sa banque.
+          * Chaque année suivant une expansion, on ajoute 10 rondes supplémentaires pour compenser les équipes ayant perdu des joueurs.
+        """)
+
+        st.markdown(f"""
+        <div style='background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin: 15px 0;'>
+            <h4 style='color: {t['primary']}; margin-top:0;'>📋 TABLEAU OFFICIEL DES POURCENTAGES DE PROTECTION (EXPANSION)</h4>
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; font-size: 0.95rem;'>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥇 <b>1ère place :</b> 35% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥈 <b>2e place :</b> 40% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥉 <b>3e place :</b> 45% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>4e place :</b> 50% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>5e place :</b> 55% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>6e place :</b> 60% de joueurs protégés</div>
+                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>7e à 12e place :</b> 65% de joueurs protégés</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        * **Art 1105 — DISSOLUTION D'UN CLUB :**
+          * Après avoir cherché un candidat, si un vote de réduire le nombre de participants est accepté par les DGs, on choisit une date pour dissoudre le club en question.
+          * Pour la dissolution, le classement général inversé est appliqué pour le repêchage des joueurs : **le draft s'effectue de 11 à 1, et la 2e ronde s'effectue également de 11 à 1** (ordre inversé continu).
+          * Les choix de repêchage sont aussi mis dans la dissolution s'il y a lieu *(ex: 13 choix disponibles pour 2026 et 14 choix pour 2027)*.
+        """)
 
 # =========================================================
 # ONGLET 4 : CHOIX DE REPÊCHAGE & ENCAN COMPLET
@@ -1084,6 +1196,7 @@ with tab_repechage:
                 # --- CARTE DE POSSESSION DES CHOIX ---
                 draft_ownership_map = {}
                 
+                # 1. Lecture de la matrice Excel
                 for idx_r, row_d in df_draft_excel.iterrows():
                     m_r = re.search(r'\d+', str(row_d.get("Ronde", "")))
                     rd_num = int(m_r.group(0)) if m_r else (idx_r + 1)
@@ -1092,6 +1205,7 @@ with tab_repechage:
                             owner = extract_owner_abbr(row_d[orig_abbr])
                             if owner: draft_ownership_map[(rd_num, orig_abbr)] = owner
 
+                # 2. Synchronisation avec les transactions en mémoire
                 k_mem = f"df_draft_{annee_cohorte}"
                 if k_mem in st.session_state:
                     df_mem = st.session_state[k_mem]
@@ -1107,17 +1221,19 @@ with tab_repechage:
                                 elif (rd_num, slot_abbr) not in draft_ownership_map:
                                     draft_ownership_map[(rd_num, slot_abbr)] = slot_abbr
 
+                # 3. Attribution par défaut sécurisée
                 total_rounds = max(15, len(df_draft_excel))
                 for rd_num in range(1, total_rounds + 1):
                     for orig_abbr in TEAM_ABBR_MAP.values():
                         if (rd_num, orig_abbr) not in draft_ownership_map:
                             draft_ownership_map[(rd_num, orig_abbr)] = orig_abbr
 
-                # Règle officielle choix MCW 2026
+                # 4. REGLE OFFICIELLE : Application stricte des choix transigés par MCW pour 2026
                 if annee_cohorte in ["2026", "26"] or "2026" in str(onglet_choisi):
                     draft_ownership_map[(3, "MCW")] = "NYR"
                     draft_ownership_map[(6, "MCW")] = "CHI"
 
+                # 5. Synchronisation de la grille Excel avec les transactions pour l'affichage matriciel
                 for (rd_num, orig_abbr), owner_abbr in draft_ownership_map.items():
                     if orig_abbr in df_draft_excel.columns:
                         for idx_r, row_d in df_draft_excel.iterrows():
@@ -1127,12 +1243,13 @@ with tab_repechage:
                                 df_draft_excel.at[idx_r, orig_abbr] = owner_abbr
                                 break
 
+                # --- COMPTABILISATION DES CHOIX ---
                 all_owned_picks = list(draft_ownership_map.values())
                 counts = pd.Series(all_owned_picks).value_counts()
                 
                 st.markdown("---")
                 
-                # Badges
+                # --- BADGES DE CAPITAL DE REPÊCHAGE ---
                 titre_dash = "CAPITAL DE REPÊCHAGE GLOBAL" if e_filtre == "Toutes les équipes" else f"CAPITAL DE REPÊCHAGE : {e_filtre}"
                 st.markdown(f"<h4 style='color:{t['primary']}; font-weight:900; text-transform:uppercase; margin-bottom:15px; font-size:1.05rem; letter-spacing:1px;'>📊 {titre_dash} ({onglet_choisi.upper()})</h4>", unsafe_allow_html=True)
                 
@@ -1140,7 +1257,9 @@ with tab_repechage:
                 for team_abbr in TEAM_ABBR_MAP.values(): 
                     count = counts.get(team_abbr, 0)
                     info = DRAFT_TEAM_STYLES.get(team_abbr, {"bg": "#334155", "color": "#FFFFFF", "border": "#475569"})
-                    opacity = "1.0" if (e_filtre == "Toutes les équipes" or team_abbr == e_filtre) else "0.25"
+                    opacity = "1.0"
+                    if e_filtre != "Toutes les équipes" and team_abbr != e_filtre:
+                        opacity = "0.25"
                     box_shadow = f"box-shadow: 0 0 20px {info['bg']}; transform: scale(1.05);" if (e_filtre == team_abbr) else "box-shadow: 0 4px 10px rgba(0,0,0,0.4);"
                     
                     badge_item = (
@@ -1156,7 +1275,9 @@ with tab_repechage:
                 badges_html = f"<div style='display:flex; flex-wrap:wrap; gap:15px; margin-bottom:25px; justify-content:flex-start;'>{''.join(badges_list)}</div>"
                 st.markdown(badges_html, unsafe_allow_html=True)
 
-                # Chronologie (Classement inversé)
+                # =========================================================
+                # 1. DÉROULEMENT OFFICIEL DE L'ENCAN (CLASSEMENT INVERSÉ)
+                # =========================================================
                 chrono_rows = []
                 pick_overall = 1
 
@@ -1191,7 +1312,7 @@ with tab_repechage:
                 st.markdown("""
                 <div style='background:rgba(15,23,42,0.8); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom:20px;'>
                     <h3 style='margin:0 0 10px 0; color:#38BDF8; font-weight:900;'>📜 DÉROULEMENT OFFICIEL DU REPÊCHAGE (ORDRE PAR RANG)</h3>
-                    <p style='color:#94A3B8; margin:0 0 15px 0; font-size:0.95rem;'>L'ordre de base commence par l'équipe ayant le <b>moins de points</b> au classement général (#1) et termine par la championne (#11).</p>
+                    <p style='color:#94A3B8; margin:0 0 15px 0; font-size:0.95rem;'>L'ordre de base commence par l'équipe ayant le <b>moins de points</b> au classement général (#1) et termine par la championne (#11). Tous les choix transigés appartiennent à leur propriétaire actuel.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1231,12 +1352,15 @@ with tab_repechage:
 
                 st.divider()
 
-                # Matrice
+                # =========================================================
+                # 2. GRILLE MATRICIELLE DU FICHIER EXCEL
+                # =========================================================
                 st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin: 20px 0 10px 0;'>📊 GRILLE MATRICIELLE DU FICHIER EXCEL ({onglet_choisi.upper()})</h3>", unsafe_allow_html=True)
                 
                 def premium_draft_style(val):
                     s = str(val).strip().upper()
-                    if s in ["", "NAN", "NONE"]: return "background-color: transparent; color: transparent;"
+                    if s in ["", "NAN", "NONE"]: 
+                        return "background-color: transparent; color: transparent;"
                     is_highlighted = (e_filtre != "Toutes les équipes" and s == e_filtre)
                     is_faded = (e_filtre != "Toutes les équipes" and s != e_filtre and s in TEAM_ABBR_MAP.values())
                     
