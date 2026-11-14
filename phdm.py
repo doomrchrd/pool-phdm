@@ -1508,4 +1508,4 @@ with tab_recrues:
                 if df_eq.empty: continue
                 logo, color = get_nhl_team_branding(eq)
                 st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(15,23,42,0.6);padding:10px 15px;border-left:6px solid {color};border-radius:8px;margin:30px 0 10px;box-shadow:0 2px 10px rgba(0,0,0,0.2);"><img src="{logo}" width="40" style="margin-right: 15px; filter: drop-shadow(0px 0px 3px rgba(255,255,255,0.1));"><h4 style="margin: 0; color: #F8FAFC; font-weight:800; text-transform: uppercase; letter-spacing:1px;">{eq} <span style="color:{t['primary']}; font-size:0.9rem;">({len(df_eq)})</span></h4></div>''', unsafe_allow_html=True)
-                st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC
+                st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC)
