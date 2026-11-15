@@ -36,17 +36,17 @@ MOIS_FR = {
     7: "juil", 8: "août", 9: "sept", 10: "oct", 11: "nov", 12: "déc"
 }
 
+# Cohortes actives pour le repêchage (2026 étant passé, on gère 2027 et 2028)
+DRAFT_YEARS = ["2027", "2028"]
+
 def format_date_fr(val):
-    if pd.isna(val):
-        return ""
+    if pd.isna(val): return ""
     val_str = str(val).strip()
-    if val_str.lower() in ["nan", "none", "", "nat", " "]:
-        return ""
+    if val_str.lower() in ["nan", "none", "", "nat", " "]: return ""
     try:
         dt = pd.to_datetime(val)
         return f"{dt.day} {MOIS_FR.get(dt.month, '')} {dt.year}".strip()
     except Exception:
-        # En cas d'exception, on supprime l'heure si elle existe
         return val_str.split("T")[0].split(" ")[0]
 
 def clean_str(s):
@@ -61,7 +61,7 @@ def clean_excel_dataframe(df):
     if len(unnamed_cols) >= max(1, len(df.columns) - 2):
         for idx, r in df.head(15).iterrows():
             vals_str = [str(v).lower().strip() for v in r.values if pd.notna(v)]
-            if any(k in v for v in vals_str for k in ["equipe", "équipe", "date", "joueur", "choix", "ronde"]):
+            if any(k in v for v in vals_str for k in ["equipe", "équipe", "date", "joueur", "choix", "ronde", "article", "reglement"]):
                 new_headers = []
                 for i, val in enumerate(r.values):
                     if pd.notna(val) and str(val).strip() != "": new_headers.append(str(val).strip())
@@ -160,7 +160,11 @@ nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
 
 SPECIAL_OVERRIDE = {}
 ALIASES = {
+    "vilardi gabe": "gabriel vilardi", "gabe vilardi": "gabriel vilardi",
+    "frederick gaudreau": "freddy gaudreau", "gaudreau frederick": "freddy gaudreau",
+    "gaudreau fred": "freddy gaudreau", "fred gaudreau": "freddy gaudreau",
     "d astous charle ed": "charle edouard d astous", "d astous charle edouard": "charle edouard d astous",
+    "dastous charle ed": "charle edouard d astous", "dastous charle edouard": "charle edouard d astous",
     "charles edouard d astous": "charle edouard d astous", "dubois pierre luc": "pierre luc dubois",
     "brandsegg nygard": "michael brandsegg nygard", "sharangovich egor": "yegor sharangovich",
     "sharangovich yegor": "yegor sharangovich", "dach kale": "kirby dach", "dach kirby": "kirby dach",
@@ -180,8 +184,8 @@ ALIASES = {
     "blackwood mack": "mackenzie blackwood", "hughes quinton": "quinn hughes",
     "khusnutdinov mara": "marat khusnutdinov", "killorn alexander": "alex killorn",
     "huberdeau jonatha": "jonathan huberdeau", "slukynsky hamptor": "hampton slukynsky",
-    "lorenz reiger": "rieger lorenz", "gaudreau fred": "frederick gaudreau", "novak tom": "thomas novak",
-    "smith william": "will smith", "boldy matthew": "matt boldy", "humphreys christia": "christian humphreys",
+    "lorenz reiger": "rieger lorenz", "novak tom": "thomas novak", "smith william": "will smith",
+    "boldy matthew": "matt boldy", "humphreys christia": "christian humphreys",
     "kaskimaki aleksant": "aleksanteri kaskimaki", "romanov alex": "alexander romanov",
     "samuelsson mattia": "mattias samuelsson", "daccord joel": "joey daccord", "blueger teodors": "teddy blueger",
     "zuccarello matts": "mats zuccarello", "crosby sydney": "sidney crosby", "borgen william": "will borgen",
@@ -223,24 +227,51 @@ def get_player_live_stats(nom_excel, team_defaut, age_defaut, pos_cat):
     return team_defaut, age_defaut, 0, 0
 
 # =========================================================
-# 3. ÉQUIPES & DIRECTEURS GÉNÉRAUX
+# 3. ÉQUIPES & DIRECTEURS GÉNÉRAUX (PHDM)
 # =========================================================
 POOLERS = {
-    "Dallas Stars": "Dominic Richard", "Saint-Louis Blues": "Stéphane Moisan", "Vegas Golden Knights": "Alain Leclerc",
-    "Chicago Black Hawks": "Carl Vigneault", "Seattle Kraken": "Stéphane Nadeau", "Buffalo Sabres": "Jean-Pierre Marois",
-    "Philadelphia Flyers": "Serge Benoit", "UCKA MOCKBA": "Long Bui", "New-York Rangers": "Dany Chabot",
-    "Vancouver Canucks": "Alex Couture", "Montréal Canadiens": "Gérard Blanchard"
+    "Dallas Stars": "Dominic Richard",
+    "Saint-Louis Blues": "Stéphane Moisan",
+    "Vegas Golden Knights": "Alain Leclerc",
+    "Chicago Black Hawks": "Carl Vigneault",
+    "Seattle Kraken": "Stéphane Nadeau",
+    "Buffalo Sabres": "Jean-Pierre Marois",
+    "Philadelphia Flyers": "Serge Benoit",
+    "UCKA MOCKBA": "Long Bui",
+    "New-York Rangers": "Dany Chabot",
+    "Vancouver Canucks": "Alex Couture",
+    "Montréal Canadiens": "Gérard Blanchard"
 }
-SLUG_MAP = {"Dallas Stars": "dal", "Saint-Louis Blues": "stl", "Vegas Golden Knights": "vgk", "Chicago Black Hawks": "chi", "Seattle Kraken": "sea", "Buffalo Sabres": "buf", "Philadelphia Flyers": "phi", "UCKA MOCKBA": "uck", "New-York Rangers": "nyr", "Vancouver Canucks": "van", "Montréal Canadiens": "mtl"}
-TEAM_ABBR_MAP = {"Dallas Stars": "DAL", "Saint-Louis Blues": "STL", "Vegas Golden Knights": "VGK", "Chicago Black Hawks": "CHI", "Seattle Kraken": "SEA", "Buffalo Sabres": "BUF", "Philadelphia Flyers": "PHI", "UCKA MOCKBA": "MCW", "New-York Rangers": "NYR", "Vancouver Canucks": "VAN", "Montréal Canadiens": "MTL"}
+
+SLUG_MAP = {
+    "Dallas Stars": "dal", "Saint-Louis Blues": "stl", "Vegas Golden Knights": "vgk",
+    "Chicago Black Hawks": "chi", "Seattle Kraken": "sea", "Buffalo Sabres": "buf",
+    "Philadelphia Flyers": "phi", "UCKA MOCKBA": "uck", "New-York Rangers": "nyr",
+    "Vancouver Canucks": "van", "Montréal Canadiens": "mtl"
+}
+
+TEAM_ABBR_MAP = {
+    "Dallas Stars": "DAL", "Saint-Louis Blues": "STL", "Vegas Golden Knights": "VGK",
+    "Chicago Black Hawks": "CHI", "Seattle Kraken": "SEA", "Buffalo Sabres": "BUF",
+    "Philadelphia Flyers": "PHI", "UCKA MOCKBA": "MCW", "New-York Rangers": "NYR",
+    "Vancouver Canucks": "VAN", "Montréal Canadiens": "MTL"
+}
+
 ABBR_TO_TEAM = {v: k for k, v in TEAM_ABBR_MAP.items()}
+ABBR_TO_TEAM["UCK"] = "UCKA MOCKBA"
+ABBR_TO_TEAM["MCW"] = "UCKA MOCKBA"
 
 TEAM_LOGOS = {
-    "Dallas Stars": "https://assets.nhle.com/logos/nhl/svg/DAL_light.svg", "Saint-Louis Blues": "https://assets.nhle.com/logos/nhl/svg/STL_light.svg",
-    "Vegas Golden Knights": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg", "Chicago Black Hawks": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg",
-    "Seattle Kraken": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg", "Buffalo Sabres": "https://assets.nhle.com/logos/nhl/svg/BUF_light.svg",
-    "Philadelphia Flyers": "https://assets.nhle.com/logos/nhl/svg/PHI_light.svg", "UCKA MOCKBA": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0f/HC_CSKA_Moscow_logo.svg/200px-HC_CSKA_Moscow_logo.svg.png",
-    "New-York Rangers": "https://assets.nhle.com/logos/nhl/svg/NYR_light.svg", "Vancouver Canucks": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg",
+    "Dallas Stars": "https://assets.nhle.com/logos/nhl/svg/DAL_light.svg",
+    "Saint-Louis Blues": "https://assets.nhle.com/logos/nhl/svg/STL_light.svg",
+    "Vegas Golden Knights": "https://assets.nhle.com/logos/nhl/svg/VGK_light.svg",
+    "Chicago Black Hawks": "https://assets.nhle.com/logos/nhl/svg/CHI_light.svg",
+    "Seattle Kraken": "https://assets.nhle.com/logos/nhl/svg/SEA_light.svg",
+    "Buffalo Sabres": "https://assets.nhle.com/logos/nhl/svg/BUF_light.svg",
+    "Philadelphia Flyers": "https://assets.nhle.com/logos/nhl/svg/PHI_light.svg",
+    "UCKA MOCKBA": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0f/HC_CSKA_Moscow_logo.svg/200px-HC_CSKA_Moscow_logo.svg.png",
+    "New-York Rangers": "https://assets.nhle.com/logos/nhl/svg/NYR_light.svg",
+    "Vancouver Canucks": "https://assets.nhle.com/logos/nhl/svg/VAN_light.svg",
     "Montréal Canadiens": "https://assets.nhle.com/logos/nhl/svg/MTL_light.svg"
 }
 
@@ -253,9 +284,7 @@ def to_team_abbr(val):
     if s_upper in ["UCK", "UCKA", "MCW"]: return "MCW"
 
     words = s.split()
-    # 1. Vancouver est testé EN PREMIER pour ne jamais entrer en conflit avec 'uck'
     if "van" in words or any(w in s for w in ["vancouver", "canuck", "canucks"]): return "VAN"
-    # 2. UCKA MOCKBA officiel
     if "mcw" in words or "uck" in words or any(w in s for w in ["ucka", "mockba"]): return "MCW"
     if "chi" in words or any(w in s for w in ["chicago", "black hawk", "blackhawks", "hawks"]): return "CHI"
     if "stl" in words or any(w in s for w in ["saint louis", "st louis", "blues"]): return "STL"
@@ -317,12 +346,17 @@ def get_nhl_team_branding(team_name):
         if key in name_lower: return logo, color
     return "https://assets.nhle.com/logos/nhl/svg/NHL_light.svg", "#94A3B8"
 
-TEAM_QUOTAS = {}
-
 # =========================================================
-# 4. GESTION DES FICHIERS (CSV & EXCEL MASTER)
+# 4. GESTION DES FICHIERS & ÉTAT PERMANENT
 # =========================================================
 DATA_FILE = "phdm_state.json"
+
+ROSTER_RULES = {
+    "att": {"label": "Attaquants", "min": 19, "max": 25, "max_tot": 80},
+    "def": {"label": "Défenseurs", "min": 7, "max": 11, "max_tot": 30},
+    "gard": {"label": "Gardiens", "min": 2, "max": 4, "max_tot": 18}
+}
+
 def get_file_path(filename):
     for c in [os.path.join(os.path.dirname(__file__), filename), filename, os.path.join("pages", filename)]:
         if os.path.exists(c): return c
@@ -334,6 +368,17 @@ def match_team_name(val):
         return ABBR_TO_TEAM[abbr]
     return None
 
+def find_sheet_by_keyword(path, keywords):
+    try:
+        xls = pd.ExcelFile(path)
+        for s in xls.sheet_names:
+            s_clean = clean_str(s)
+            if any(k in s_clean for k in keywords):
+                return s
+    except Exception:
+        pass
+    return None
+
 def init_rosters_from_csv():
     path = get_file_path("alignements_phdm.csv")
     if not os.path.exists(path): return False
@@ -341,18 +386,20 @@ def init_rosters_from_csv():
     except: df_raw = pd.read_csv(path, sep=';', encoding='latin1')
 
     col_map = {clean_str(c): c for c in df_raw.columns}
-    col_equipe = col_map.get("equipe pool") or df_raw.columns[0]
+    col_equipe = col_map.get("equipe pool") or col_map.get("equipe") or df_raw.columns[0]
     col_statut = col_map.get("statut") or df_raw.columns[1]
-    col_pos = col_map.get("position") or df_raw.columns[2]
-    col_joueur = col_map.get("joueurs") or df_raw.columns[3]
-    col_team = col_map.get("t") or df_raw.columns[4]
-    col_age = col_map.get("a") or df_raw.columns[5]
+    col_pos = col_map.get("position") or col_map.get("pos") or df_raw.columns[2]
+    col_joueur = col_map.get("joueurs") or col_map.get("joueur") or df_raw.columns[3]
+    col_team = col_map.get("t") or col_map.get("equipe lnh") or df_raw.columns[4]
+    col_age = col_map.get("a") or col_map.get("age") or df_raw.columns[5]
     col_exp = col_map.get("exp") or df_raw.columns[6]
+
     df_raw["Standard_Team"] = df_raw[col_equipe].apply(match_team_name)
 
     for team_name in POOLERS.keys():
         slug = SLUG_MAP[team_name]
         df_team = df_raw[df_raw["Standard_Team"] == team_name]
+
         for role_code, pos_cat, is_partant in [
             ("att", "ATT", True), ("banc_att", "ATT", False),
             ("def", "DEF", True), ("banc_def", "DEF", False),
@@ -360,6 +407,7 @@ def init_rosters_from_csv():
         ]:
             statut_filter = "part" if is_partant else "banc"
             sub = df_team[(df_team[col_statut].astype(str).str.strip().str.lower().str.contains(statut_filter)) & (df_team[col_pos].astype(str).str.strip().str.upper().str.startswith(pos_cat[:3]))]
+
             rows = []
             for _, r in sub.iterrows():
                 nom = str(r[col_joueur]).strip()
@@ -368,48 +416,78 @@ def init_rosters_from_csv():
                 except: age_csv = 0
                 try: exp = int(r[col_exp])
                 except: exp = 0
+
                 t_reel, age_reel, pj, pts = get_player_live_stats(nom, t_init, age_csv, pos_cat)
                 rows.append([0, nom, t_reel, age_reel, exp, pj, pts])
+
             df_res = pd.DataFrame(rows, columns=["No", "Joueurs", "T", "A", "EXP", "PJ", "Pts"]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
             df_res["No"] = range(1, len(df_res) + 1)
             st.session_state[f"{slug}_df_{role_code}"] = df_res
+
         st.session_state[f"{slug}_init"] = True
     return True
 
 def init_recrues_from_csv():
     path = get_file_path("recrues_phdm.csv")
     cols_master = ["No", "Joueurs", "Pos", "Année", "Ronde", "Rang", "Cotes", "Club Junior", "Ligue", "Équipe LNH (Réelle)", "Équipe PHDM"]
+
     if not os.path.exists(path):
         st.session_state["df_all_recrues"] = pd.DataFrame(columns=cols_master)
-        for slug in SLUG_MAP.values(): st.session_state[f"{slug}_df_recrues"] = pd.DataFrame(columns=cols_master)
+        for slug in SLUG_MAP.values(): st.session_state[f"{slug}_df_recrues"] = pd.DataFrame(columns=cols_master + ["Pts"])
         return False
+
     try: df_raw = pd.read_csv(path, sep=None, engine='python', encoding='utf-8-sig', header=None)
     except: df_raw = pd.read_csv(path, sep=';', encoding='latin1', header=None)
+
     rows_master = []
     current_nhl_team = "Libre / Non repêché"
+
     for i, r in df_raw.iterrows():
         val_a = str(r.iloc[0]).strip() if len(r) > 0 and pd.notna(r.iloc[0]) else ""
         val_b = str(r.iloc[1]).strip() if len(r) > 1 and pd.notna(r.iloc[1]) else ""
+
         if val_a == "" and val_b == "": continue
         if val_a.lower() in ["no", "num", "numéro", "numero"] or val_b.lower() in ["joueurs", "joueur", "nom", "noms"]: continue
+
         if val_a.isdigit() and val_b != "" and val_b.lower() != "nan":
-            nom, pos = val_b, str(r.iloc[2]).strip() if len(r) > 2 and pd.notna(r.iloc[2]) else ""
-            annee, ronde = str(r.iloc[3]).strip() if len(r) > 3 and pd.notna(r.iloc[3]) else "", str(r.iloc[4]).strip() if len(r) > 4 and pd.notna(r.iloc[4]) else ""
+            nom = val_b
+            pos = str(r.iloc[2]).strip() if len(r) > 2 and pd.notna(r.iloc[2]) else ""
+            annee = str(r.iloc[3]).strip() if len(r) > 3 and pd.notna(r.iloc[3]) else ""
+            ronde = str(r.iloc[4]).strip() if len(r) > 4 and pd.notna(r.iloc[4]) else ""
             rang = str(r.iloc[5]).strip() if len(r) > 5 and pd.notna(r.iloc[5]) else ""
-            cotes = f"{str(r.iloc[6]).strip()}-{str(r.iloc[7]).strip()}-{str(r.iloc[8]).strip()}".strip('-')
+
+            c1 = str(r.iloc[6]).strip() if len(r) > 6 and pd.notna(r.iloc[6]) else ""
+            c2 = str(r.iloc[7]).strip() if len(r) > 7 and pd.notna(r.iloc[7]) else ""
+            c3 = str(r.iloc[8]).strip() if len(r) > 8 and pd.notna(r.iloc[8]) else ""
+            cotes = f"{c1}-{c2}-{c3}".strip('-')
             if cotes == "--": cotes = ""
-            club, ligue = str(r.iloc[9]).strip() if len(r) > 9 and pd.notna(r.iloc[9]) else "", str(r.iloc[10]).strip() if len(r) > 10 and pd.notna(r.iloc[10]) else ""
-            proprio = str(r.iloc[16]).strip() if len(r) > 16 and pd.notna(r.iloc[16]) else ""
-            if proprio.lower() == "nan": proprio = ""
+
+            club = str(r.iloc[9]).strip() if len(r) > 9 and pd.notna(r.iloc[9]) else ""
+            ligue = str(r.iloc[10]).strip() if len(r) > 10 and pd.notna(r.iloc[10]) else ""
+
+            proprio = ""
+            if len(r) > 16 and pd.notna(r.iloc[16]):
+                proprio = str(r.iloc[16]).strip()
+            elif len(r) > 14 and pd.notna(r.iloc[14]):
+                proprio = str(r.iloc[14]).strip()
+
+            if proprio.lower() in ["nan", "none"]: proprio = ""
+
             rows_master.append([len(rows_master)+1, nom, pos, annee, ronde, rang, cotes, club, ligue, current_nhl_team, proprio])
+
         elif not val_a.isdigit() and val_a.lower() not in ["nan", ""]:
             if "ronde" not in val_a.lower():
-                if "canadien" in val_a.lower() and "montr" in val_a.lower(): current_nhl_team = "Montréal Canadiens"
-                elif "draft" in val_a.lower(): current_nhl_team = "Draft NHL 2026"
-                else: current_nhl_team = val_a
+                if "canadien" in val_a.lower() and "montr" in val_a.lower():
+                    current_nhl_team = "Montréal Canadiens"
+                elif "draft" in val_a.lower() or "repêchage" in val_a.lower():
+                    current_nhl_team = "Draft NHL"
+                else:
+                    current_nhl_team = val_a
+
     df_master = pd.DataFrame(rows_master, columns=cols_master)
-    st.session_state["df_all_recrues"] = df_master
     df_master["Standard_PHDM"] = df_master["Équipe PHDM"].apply(match_team_name)
+    st.session_state["df_all_recrues"] = df_master
+
     for team_name in POOLERS.keys():
         slug = SLUG_MAP[team_name]
         sub = df_master[df_master["Standard_PHDM"] == team_name].copy()
@@ -417,150 +495,434 @@ def init_recrues_from_csv():
         sub = sub.sort_values(by="Joueurs").reset_index(drop=True)
         sub["No"] = range(1, len(sub) + 1)
         st.session_state[f"{slug}_df_recrues"] = sub
+
     return True
 
-def import_excel_transactions():
-    path = get_file_path("gestion_phdm.xlsx")
-    if not os.path.exists(path): return False
+def init_drafts_from_excel():
+    """Charge l'état initial des choix de repêchage futurs (2027, 2028) depuis gestion_phdm.xlsx."""
+    abbrs = list(TEAM_ABBR_MAP.values())
+    for annee in DRAFT_YEARS:
+        st.session_state[f"df_draft_{annee}"] = pd.DataFrame(
+            {t: [t]*15 for t in abbrs},
+            index=[f"Ronde {i}" for i in range(1, 16)]
+        )
+
+    if "df_draft_2026" in st.session_state:
+        del st.session_state["df_draft_2026"]
+
+    path_excel = get_file_path("gestion_phdm.xlsx")
+    if not os.path.exists(path_excel):
+        return False
+
     try:
-        df_t = pd.read_excel(path, sheet_name="Transactions")
-        df_t = clean_excel_dataframe(df_t)
-        st.session_state["trade_history"] = []
-        for _, row in df_t.iterrows():
-            if len(row) < 3: continue
-            eq1_name = match_team_name(str(row.iloc[1]))
-            eq2_name = match_team_name(str(row.iloc[2]))
-            if not eq1_name or not eq2_name: continue
-            slug1, slug2 = SLUG_MAP[eq1_name], SLUG_MAP[eq2_name]
-            def parse_col(idx):
-                val = str(row.iloc[idx])
-                if pd.isna(row.iloc[idx]) or val.strip().lower() in ['nan', 'none', '']: return []
-                return [i.strip() for i in val.split(',') if i.strip()]
-            j1_list, c1_list = parse_col(3) if len(row) > 3 else [], parse_col(4) if len(row) > 4 else []
-            j2_list, c2_list = parse_col(5) if len(row) > 5 else [], parse_col(6) if len(row) > 6 else []
-            def move_players(j_list, s_src, s_dest):
-                moved = []
-                for nom in j_list:
-                    nc = clean_str(nom)
-                    for role in ["df_att", "df_def", "df_gard", "df_banc_att", "df_banc_def", "df_banc_gard", "df_recrues"]:
-                        k_src = f"{s_src}_{role}"
-                        if k_src in st.session_state and not st.session_state[k_src].empty:
-                            df_s = st.session_state[k_src]
-                            mask = df_s["Joueurs"].apply(clean_str) == nc
-                            if mask.any():
-                                row_j = df_s[mask].iloc[[0]].copy()
-                                st.session_state[k_src] = df_s[~mask].reset_index(drop=True)
-                                prefix = "banc_" if "banc" in role else ""
-                                if "att" in role: k_d = f"{s_dest}_df_{prefix}att"
-                                elif "def" in role: k_d = f"{s_dest}_df_{prefix}def"
-                                elif "gard" in role: k_d = f"{s_dest}_df_{prefix}gard"
-                                else: k_d = f"{s_dest}_df_recrues"
-                                st.session_state[k_d] = pd.concat([st.session_state[k_d], row_j]).reset_index(drop=True)
-                                moved.append(row_j.iloc[0]["Joueurs"])
-                                break
-                return moved
-            m_j1, m_j2 = move_players(j1_list, slug1, slug2), move_players(j2_list, slug2, slug1)
+        xls = pd.ExcelFile(path_excel)
+        draft_sheets = [s for s in xls.sheet_names if "repechage" in clean_str(s) or "draft" in clean_str(s)]
+        for sheet_name in draft_sheets:
+            m_yr = re.search(r'(2027|2028)', str(sheet_name))
+            if not m_yr: continue
+            yr = m_yr.group(1)
 
-            def parse_picks(c_list, a_src, a_dest):
-                moved = []
-                for c in c_list:
-                    c_str = str(c).strip()
-                    if not c_str: continue
-                    m_yr = re.search(r'(202[5-9])', c_str)
-                    yr = m_yr.group(1) if m_yr else "2026"
-                    rd_num = None
-                    m_rd = re.search(r'(?:ronde|rd|tour)\s*#?\s*(\d+)', c_str, re.IGNORECASE)
-                    if m_rd: rd_num = int(m_rd.group(1))
-                    else:
-                        m_ord = re.search(r'(\d+)\s*(?:e|ere|ème|eme|th|nd|rd)\b', c_str, re.IGNORECASE)
-                        if m_ord: rd_num = int(m_ord.group(1))
-                        else:
-                            m_pick_num = re.search(r'#\s*(\d+)', c_str)
-                            if m_pick_num:
-                                p_val = int(m_pick_num.group(1))
-                                rd_num = ((p_val - 1) // 11) + 1
-                            else:
-                                m_gen = re.search(r'(\d+)', c_str)
-                                if m_gen:
-                                    val = int(m_gen.group(1))
-                                    if 1 <= val <= 15: rd_num = val
-                                    elif val in [31, 64]: rd_num = ((val - 1) // 11) + 1
+            df_raw = pd.read_excel(path_excel, sheet_name=sheet_name, header=None)
+            header_idx = 0
+            for idx, row in df_raw.head(10).iterrows():
+                row_vals = [str(x).upper().strip() for x in row.values]
+                if sum(1 for tm in row_vals if to_team_abbr(tm) is not None) >= 3 or any("RONDE" in v for v in row_vals):
+                    header_idx = idx
+                    break
 
-                    if rd_num and 1 <= rd_num <= 15:
-                        rd = f"Ronde {rd_num}"
-                        m_slot = re.search(r'\((.*?)\)', c_str)
-                        slot = to_team_abbr(m_slot.group(1)) if m_slot else a_src
-                        if ("31" in c_str or rd_num == 3) and a_src == "MCW": slot = "MCW"
-                        if ("64" in c_str or rd_num == 6) and a_src == "MCW": slot = "MCW"
-                        k_draft = f"df_draft_{yr}"
-                        if k_draft in st.session_state:
-                            df_d = st.session_state[k_draft]
-                            if rd in df_d.index and slot in df_d.columns:
-                                df_d.loc[rd, slot] = a_dest
-                                moved.append(c_str)
-                return moved
+            new_cols = []
+            for i, val in enumerate(df_raw.iloc[header_idx]):
+                val_str = str(val).strip()
+                abbr = to_team_abbr(val_str)
+                if i == 0 and (abbr is None or "RONDE" in val_str.upper() or val_str.isdigit()):
+                    new_cols.append("Ronde")
+                elif abbr:
+                    new_cols.append(abbr)
+                else:
+                    new_cols.append(f"Col_{i}")
 
-            m_c1 = parse_picks(c1_list, TEAM_ABBR_MAP[eq1_name], TEAM_ABBR_MAP[eq2_name])
-            m_c2 = parse_picks(c2_list, TEAM_ABBR_MAP[eq2_name], TEAM_ABBR_MAP[eq1_name])
+            df_sheet = df_raw.iloc[header_idx+1:].copy()
+            df_sheet.columns = new_cols
+            df_sheet = df_sheet.dropna(how='all').reset_index(drop=True)
 
-            # Formatage propre en français : 12 nov 2026
-            date_clean = format_date_fr(row.iloc[0])
-            date_str = date_clean if date_clean else "N/A"
+            df_clean_draft = st.session_state[f"df_draft_{yr}"].copy()
+            for idx_r, row_d in df_sheet.iterrows():
+                m_r = re.search(r'\d+', str(row_d.get("Ronde", "")))
+                rd_num = int(m_r.group(0)) if m_r else (idx_r + 1)
+                rd_label = f"Ronde {rd_num}"
+                if rd_label not in df_clean_draft.index:
+                    df_clean_draft.loc[rd_label] = {t: t for t in abbrs}
 
-            st.session_state["trade_history"].insert(0, {"Date": date_str, "Équipe A Name": eq1_name, "Équipe B Name": eq2_name, "A cédé": ", ".join(m_j1 + m_c1) or "Rien", "B a cédé": ", ".join(m_j2 + m_c2) or "Rien"})
-    except Exception: return False
-    return True
+                for orig_abbr in abbrs:
+                    if orig_abbr in df_sheet.columns:
+                        owner = extract_owner_abbr(row_d[orig_abbr])
+                        if owner and owner in abbrs:
+                            df_clean_draft.loc[rd_label, orig_abbr] = owner
+
+            st.session_state[f"df_draft_{yr}"] = df_clean_draft
+        return True
+    except Exception:
+        return False
 
 def save_state():
-    state_data = {"rosters": {}, "drafts": {}, "trade_history": st.session_state.get("trade_history", [])}
+    state_data = {
+        "schema_version": 3,
+        "rosters": {},
+        "drafts": {},
+        "all_recrues": [],
+        "app_trade_history": st.session_state.get("app_trade_history", []),
+        "last_trade_backup": st.session_state.get("last_trade_backup", None)
+    }
     for slug in SLUG_MAP.values():
         state_data["rosters"][slug] = {}
         for role in ["att", "def", "gard", "banc_att", "banc_def", "banc_gard", "recrues"]:
             if f"{slug}_df_{role}" in st.session_state:
                 state_data["rosters"][slug][role] = st.session_state[f"{slug}_df_{role}"].to_dict(orient="records")
-    for annee in ["2026", "2027", "2028"]:
+    for annee in DRAFT_YEARS:
         if f"df_draft_{annee}" in st.session_state:
             state_data["drafts"][annee] = st.session_state[f"df_draft_{annee}"].to_dict(orient="index")
+    if "df_all_recrues" in st.session_state and not st.session_state["df_all_recrues"].empty:
+        state_data["all_recrues"] = st.session_state["df_all_recrues"].to_dict(orient="records")
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(state_data, f, ensure_ascii=False, indent=4)
 
 def load_state():
     if not os.path.exists(DATA_FILE): return False
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f: state_data = json.load(f)
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
+
         for slug, roles in state_data.get("rosters", {}).items():
-            for role, records in roles.items(): st.session_state[f"{slug}_df_{role}"] = pd.DataFrame(records)
+            for role, records in roles.items():
+                df_loaded = pd.DataFrame(records)
+                if role != "recrues" and df_loaded.empty:
+                    df_loaded = pd.DataFrame(columns=["No", "Joueurs", "T", "A", "EXP", "PJ", "Pts"])
+                st.session_state[f"{slug}_df_{role}"] = df_loaded
             st.session_state[f"{slug}_init"] = True
-        for annee, records in state_data.get("drafts", {}).items(): st.session_state[f"df_draft_{annee}"] = pd.DataFrame.from_dict(records, orient="index")
-        st.session_state["trade_history"] = state_data.get("trade_history", [])
+
+        if state_data.get("schema_version", 1) < 3:
+            init_drafts_from_excel()
+        else:
+            for annee in DRAFT_YEARS:
+                if annee in state_data.get("drafts", {}):
+                    st.session_state[f"df_draft_{annee}"] = pd.DataFrame.from_dict(state_data["drafts"][annee], orient="index")
+                else:
+                    abbrs = list(TEAM_ABBR_MAP.values())
+                    st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
+
+        if "df_draft_2026" in st.session_state:
+            del st.session_state["df_draft_2026"]
+
+        if state_data.get("all_recrues"):
+            st.session_state["df_all_recrues"] = pd.DataFrame(state_data["all_recrues"])
+
+        st.session_state["app_trade_history"] = state_data.get("app_trade_history", [])
+        st.session_state["last_trade_backup"] = state_data.get("last_trade_backup", None)
         return True
-    except: return False
+    except Exception:
+        return False
 
 def enforce_roster_limits(slug):
-    quotas = TEAM_QUOTAS.get(slug, {"att": 25, "def": 11, "gard": 4})
-    for pos, max_partants in [("att", quotas["att"]), ("def", quotas["def"]), ("gard", quotas["gard"])]:
+    for pos, max_partants in [("att", 25), ("def", 11), ("gard", 4)]:
         df_p = st.session_state.get(f"{slug}_df_{pos}")
         df_b = st.session_state.get(f"{slug}_df_banc_{pos}")
         if df_p is not None and df_b is not None and len(df_p) > max_partants:
             df_p = df_p.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
             demoted = df_p.iloc[max_partants:].copy()
             df_p = df_p.iloc[:max_partants].copy()
-            df_b = pd.concat([df_b, demoted]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+            df_b = pd.concat([df_b, demoted], ignore_index=True).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
             df_p["No"] = range(1, len(df_p) + 1)
             df_b["No"] = range(1, len(df_b) + 1)
             st.session_state[f"{slug}_df_{pos}"] = df_p
             st.session_state[f"{slug}_df_banc_{pos}"] = df_b
 
+# =========================================================
+# 4B. MOTEUR D'ÉCHANGES DIRECTS (PHDM)
+# =========================================================
+def get_team_trade_assets(team_name):
+    slug = SLUG_MAP[team_name]
+    abbr = TEAM_ABBR_MAP[team_name]
+    players = []
+
+    role_labels = [
+        ("att", "att", True, "ATT - Partant"),
+        ("banc_att", "att", False, "ATT - Banc"),
+        ("def", "def", True, "DEF - Partant"),
+        ("banc_def", "def", False, "DEF - Banc"),
+        ("gard", "gard", True, "GARD - Partant"),
+        ("banc_gard", "gard", False, "GARD - Banc"),
+        ("recrues", "recrues", False, "Recrue")
+    ]
+
+    for role_key, pos_group, is_partant, badge in role_labels:
+        df_r = st.session_state.get(f"{slug}_df_{role_key}", pd.DataFrame())
+        if df_r.empty: continue
+        for idx, row in df_r.iterrows():
+            nom = str(row.get("Joueurs", "")).strip()
+            if not nom or nom == "[Carreau Libre]": continue
+            if role_key == "recrues":
+                lnh = str(row.get("Équipe LNH (Réelle)", "")).strip()
+                pos_r = str(row.get("Pos", "")).strip()
+                label = f"[{badge}] {nom} ({pos_r} - {lnh})"
+            else:
+                pts = int(row.get("Pts", 0)) if pd.notna(row.get("Pts", 0)) else 0
+                t_lnh = str(row.get("T", "")).strip()
+                label = f"[{badge}] {nom} ({t_lnh} · {pts} pts)"
+            players.append({
+                "label": label,
+                "name": nom,
+                "role_key": role_key,
+                "pos_group": pos_group,
+                "is_partant": is_partant
+            })
+
+    picks = []
+    for yr in DRAFT_YEARS:
+        df_d = st.session_state.get(f"df_draft_{yr}")
+        if df_d is None or df_d.empty: continue
+        for rd_label in df_d.index:
+            for orig_abbr in TEAM_ABBR_MAP.values():
+                if orig_abbr in df_d.columns:
+                    owner = str(df_d.loc[rd_label, orig_abbr]).strip().upper()
+                    if owner == abbr:
+                        tag = "Choix d'origine" if orig_abbr == abbr else f"Acquis de {orig_abbr}"
+                        label = f"{yr} · {rd_label} ({tag} : {orig_abbr})"
+                        picks.append({
+                            "label": label,
+                            "year": yr,
+                            "round": rd_label,
+                            "orig_abbr": orig_abbr
+                        })
+
+    return players, picks
+
+def clone_team_rosters(slug):
+    res = {}
+    for r in ["att", "banc_att", "def", "banc_def", "gard", "banc_gard", "recrues"]:
+        df_cur = st.session_state.get(f"{slug}_df_{r}", pd.DataFrame())
+        res[r] = df_cur.copy()
+    return res
+
+def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_starters=True):
+    slug_a, slug_b = SLUG_MAP[team_a], SLUG_MAP[team_b]
+    abbr_a, abbr_b = TEAM_ABBR_MAP[team_a], TEAM_ABBR_MAP[team_b]
+
+    ros_a = clone_team_rosters(slug_a)
+    ros_b = clone_team_rosters(slug_b)
+
+    before_part_a = {pos: len(ros_a[pos]) for pos in ["att", "def", "gard"]}
+    before_part_b = {pos: len(ros_b[pos]) for pos in ["att", "def", "gard"]}
+
+    def extract_players(ros_src, assets):
+        extracted = []
+        for asset in assets:
+            rk = asset["role_key"]
+            df_src = ros_src[rk]
+            mask = df_src["Joueurs"].astype(str).str.strip() == asset["name"]
+            if mask.any():
+                row_df = df_src[mask].iloc[[0]].copy()
+                ros_src[rk] = df_src[~mask].reset_index(drop=True)
+                extracted.append((asset, row_df))
+        return extracted
+
+    moved_from_a = extract_players(ros_a, out_a)
+    moved_from_b = extract_players(ros_b, out_b)
+
+    def inject_players(ros_dest, dest_team_name, incoming_list):
+        notes = []
+        for asset, row_df in incoming_list:
+            pos_g = asset["pos_group"]
+            if pos_g == "recrues":
+                row_df["Équipe PHDM"] = dest_team_name
+                if "Standard_PHDM" in row_df.columns:
+                    row_df["Standard_PHDM"] = dest_team_name
+                ros_dest["recrues"] = pd.concat([ros_dest["recrues"], row_df], ignore_index=True)
+                notes.append(f"🌱 {asset['name']} ajouté aux recrues de {TEAM_ABBR_MAP[dest_team_name]}.")
+            else:
+                banc_key = f"banc_{pos_g}"
+                ros_dest[banc_key] = pd.concat([ros_dest[banc_key], row_df], ignore_index=True)
+                ros_dest[banc_key] = ros_dest[banc_key].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                notes.append(f"📋 {asset['name']} arrive sur le banc ({ROSTER_RULES[pos_g]['label']}) de {TEAM_ABBR_MAP[dest_team_name]}.")
+        return notes
+
+    notes_a = inject_players(ros_b, team_b, moved_from_a)
+    notes_b = inject_players(ros_a, team_a, moved_from_b)
+    all_notes = notes_a + notes_b
+
+    def rebalance_starters(ros, before_counts, team_abbr):
+        auto_promos = []
+        for pos, rules in ROSTER_RULES.items():
+            df_p = ros[pos]
+            df_b = ros[f"banc_{pos}"]
+            if not df_p.empty:
+                df_p = df_p.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+            if not df_b.empty:
+                df_b = df_b.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+
+            cur_p = len(df_p)
+            target_p = before_counts[pos] if auto_fill_starters else max(cur_p, rules["min"])
+            target_p = max(rules["min"], min(rules["max"], target_p))
+
+            needed = max(0, target_p - cur_p)
+            if needed > 0 and not df_b.empty:
+                to_promote = min(needed, len(df_b))
+                promoted_rows = df_b.iloc[:to_promote].copy()
+                df_b = df_b.iloc[to_promote:].reset_index(drop=True)
+                df_p = pd.concat([df_p, promoted_rows], ignore_index=True).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                for p_nom in promoted_rows["Joueurs"].tolist():
+                    auto_promos.append(f"⬆️ {team_abbr} : {p_nom} monte partant ({rules['label']}) pour combler un départ.")
+
+            if not df_p.empty: df_p["No"] = range(1, len(df_p) + 1)
+            if not df_b.empty: df_b["No"] = range(1, len(df_b) + 1)
+            ros[pos] = df_p
+            ros[f"banc_{pos}"] = df_b
+        if not ros["recrues"].empty:
+            ros["recrues"] = ros["recrues"].sort_values(by="Joueurs").reset_index(drop=True)
+            ros["recrues"]["No"] = range(1, len(ros["recrues"]) + 1)
+        return auto_promos
+
+    promos_a = rebalance_starters(ros_a, before_part_a, abbr_a)
+    promos_b = rebalance_starters(ros_b, before_part_b, abbr_b)
+    auto_promos = promos_a + promos_b
+
+    def check_quotas(ros, t_name):
+        errors = []
+        warnings = []
+        stats = {}
+        tot_conc = 0
+        for pos, rules in ROSTER_RULES.items():
+            n_p = len(ros[pos])
+            n_b = len(ros[f"banc_{pos}"])
+            n_tot = n_p + n_b
+            tot_conc += n_tot
+            stats[pos] = (n_p, n_tot)
+            if n_p < rules["min"]:
+                errors.append(f"❌ {t_name} ({rules['label']}) : {n_p} partants (minimum requis : {rules['min']}). Pas assez de joueurs sur le banc!")
+            if n_p > rules["max"]:
+                errors.append(f"❌ {t_name} ({rules['label']}) : {n_p} partants (maximum : {rules['max']}).")
+            if n_tot > rules["max_tot"]:
+                warnings.append(f"⚠️ {t_name} ({rules['label']}) : {n_tot} joueurs au total (max : {rules['max_tot']}).")
+        stats["total"] = tot_conc
+        if tot_conc > 128:
+            warnings.append(f"⚠️ {t_name} : {tot_conc} joueurs dans la concession (max : 128).")
+        return errors, warnings, stats
+
+    err_a, warn_a, stats_a = check_quotas(ros_a, team_a)
+    err_b, warn_b, stats_b = check_quotas(ros_b, team_b)
+
+    drafts_sim = {}
+    for yr in DRAFT_YEARS:
+        if f"df_draft_{yr}" in st.session_state:
+            drafts_sim[yr] = st.session_state[f"df_draft_{yr}"].copy()
+
+    for pk in picks_a:
+        if pk["year"] in drafts_sim:
+            drafts_sim[pk["year"]].loc[pk["round"], pk["orig_abbr"]] = abbr_b
+    for pk in picks_b:
+        if pk["year"] in drafts_sim:
+            drafts_sim[pk["year"]].loc[pk["round"], pk["orig_abbr"]] = abbr_a
+
+    return {
+        "ros_a": ros_a, "ros_b": ros_b,
+        "drafts_sim": drafts_sim,
+        "notes": all_notes,
+        "auto_promos": auto_promos,
+        "errors": err_a + err_b,
+        "warnings": warn_a + warn_b,
+        "stats_a": stats_a, "stats_b": stats_b
+    }
+
+def execute_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, sim_result):
+    slug_a, slug_b = SLUG_MAP[team_a], SLUG_MAP[team_b]
+
+    backup = {
+        "team_a": team_a, "team_b": team_b,
+        "rosters": {
+            slug_a: {r: st.session_state[f"{slug_a}_df_{r}"].to_dict(orient="records") for r in ["att", "banc_att", "def", "banc_def", "gard", "banc_gard", "recrues"]},
+            slug_b: {r: st.session_state[f"{slug_b}_df_{r}"].to_dict(orient="records") for r in ["att", "banc_att", "def", "banc_def", "gard", "banc_gard", "recrues"]}
+        },
+        "drafts": {yr: st.session_state[f"df_draft_{yr}"].to_dict(orient="index") for yr in DRAFT_YEARS if f"df_draft_{yr}" in st.session_state},
+        "all_recrues": st.session_state["df_all_recrues"].to_dict(orient="records") if "df_all_recrues" in st.session_state else [],
+        "app_trade_history": list(st.session_state.get("app_trade_history", []))
+    }
+    st.session_state["last_trade_backup"] = backup
+
+    for r, df_new in sim_result["ros_a"].items():
+        st.session_state[f"{slug_a}_df_{r}"] = df_new
+    for r, df_new in sim_result["ros_b"].items():
+        st.session_state[f"{slug_b}_df_{r}"] = df_new
+
+    if "df_all_recrues" in st.session_state and not st.session_state["df_all_recrues"].empty:
+        df_rec_master = st.session_state["df_all_recrues"].copy()
+        for asset in out_a:
+            if asset["pos_group"] == "recrues":
+                mask = df_rec_master["Joueurs"].apply(clean_str) == clean_str(asset["name"])
+                df_rec_master.loc[mask, "Équipe PHDM"] = team_b
+                if "Standard_PHDM" in df_rec_master.columns:
+                    df_rec_master.loc[mask, "Standard_PHDM"] = team_b
+        for asset in out_b:
+            if asset["pos_group"] == "recrues":
+                mask = df_rec_master["Joueurs"].apply(clean_str) == clean_str(asset["name"])
+                df_rec_master.loc[mask, "Équipe PHDM"] = team_a
+                if "Standard_PHDM" in df_rec_master.columns:
+                    df_rec_master.loc[mask, "Standard_PHDM"] = team_a
+        st.session_state["df_all_recrues"] = df_rec_master
+
+    for yr, df_d in sim_result["drafts_sim"].items():
+        st.session_state[f"df_draft_{yr}"] = df_d
+
+    a_items = [a["name"] for a in out_a] + [f"{p['year']} {p['round']} ({p['orig_abbr']})" for p in picks_a]
+    b_items = [b["name"] for b in out_b] + [f"{p['year']} {p['round']} ({p['orig_abbr']})" for p in picks_b]
+
+    if "app_trade_history" not in st.session_state:
+        st.session_state["app_trade_history"] = []
+
+    st.session_state["app_trade_history"].insert(0, {
+        "Date": format_date_fr(datetime.now()),
+        "Équipe A": team_a,
+        "A cédé": ", ".join(a_items) if a_items else "Rien",
+        "Équipe B": team_b,
+        "B a cédé": ", ".join(b_items) if b_items else "Rien",
+        "Ajustements auto": " | ".join(sim_result["auto_promos"]) if sim_result["auto_promos"] else "Aucun"
+    })
+
+    save_state()
+
+def undo_last_trade():
+    backup = st.session_state.get("last_trade_backup")
+    if not backup: return False
+    for slug, roles in backup.get("rosters", {}).items():
+        for role, records in roles.items():
+            df_b = pd.DataFrame(records)
+            if role != "recrues" and df_b.empty:
+                df_b = pd.DataFrame(columns=["No", "Joueurs", "T", "A", "EXP", "PJ", "Pts"])
+            st.session_state[f"{slug}_df_{role}"] = df_b
+    for yr, records in backup.get("drafts", {}).items():
+        st.session_state[f"df_draft_{yr}"] = pd.DataFrame.from_dict(records, orient="index")
+    if backup.get("all_recrues"):
+        st.session_state["df_all_recrues"] = pd.DataFrame(backup["all_recrues"])
+    st.session_state["app_trade_history"] = backup.get("app_trade_history", [])
+    st.session_state["last_trade_backup"] = None
+    save_state()
+    return True
+
+# =========================================================
+# CHARGEMENT INITIAL
+# =========================================================
 data_loaded = load_state()
 if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_state or st.session_state[f"{SLUG_MAP['Dallas Stars']}_df_att"].empty):
     init_rosters_from_csv()
     init_recrues_from_csv()
-    abbrs = list(TEAM_ABBR_MAP.values())
-    for annee in ["2026", "2027", "2028"]:
-        if f"df_draft_{annee}" not in st.session_state:
-            st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
+    init_drafts_from_excel()
+    if "app_trade_history" not in st.session_state:
+        st.session_state["app_trade_history"] = []
+    save_state()
 
 if "df_all_recrues" not in st.session_state: init_recrues_from_csv()
+for yr in DRAFT_YEARS:
+    if f"df_draft_{yr}" not in st.session_state:
+        init_drafts_from_excel()
+        break
 for slug in SLUG_MAP.values(): enforce_roster_limits(slug)
 
 # =========================================================
@@ -591,78 +953,67 @@ THEMES = {
     "Dallas Stars": {
         "bg_top": "#0F291E", "bg_bottom": "#050B08",
         "primary": "#10B981", "primary_glow": "rgba(16,185,129,0.4)",
-        "accent": "#E2E8F0",
-        "btn_grad": "linear-gradient(135deg, #10B981, #047857)",
+        "accent": "#E2E8F0", "btn_grad": "linear-gradient(135deg, #10B981, #047857)",
         "card_bg": "rgba(15, 30, 22, 0.6)"
     },
     "Montréal Canadiens": {
         "bg_top": "#2E0F15", "bg_bottom": "#0B1121",
         "primary": "#EF4444", "primary_glow": "rgba(239,68,68,0.4)",
-        "accent": "#60A5FA",
-        "btn_grad": "linear-gradient(135deg, #EF4444, #1E3A8A)",
+        "accent": "#60A5FA", "btn_grad": "linear-gradient(135deg, #EF4444, #1E3A8A)",
         "card_bg": "rgba(30, 15, 20, 0.6)"
     },
     "Saint-Louis Blues": {
         "bg_top": "#0F172A", "bg_bottom": "#020617",
         "primary": "#3B82F6", "primary_glow": "rgba(59,130,246,0.4)",
-        "accent": "#FACC15",
-        "btn_grad": "linear-gradient(135deg, #3B82F6, #1D4ED8)",
+        "accent": "#FACC15", "btn_grad": "linear-gradient(135deg, #3B82F6, #1D4ED8)",
         "card_bg": "rgba(15, 25, 45, 0.6)"
     },
     "Vegas Golden Knights": {
         "bg_top": "#272215", "bg_bottom": "#111315",
         "primary": "#D4AF37", "primary_glow": "rgba(212,175,55,0.4)",
-        "accent": "#94A3B8",
-        "btn_grad": "linear-gradient(135deg, #D4AF37, #856014)",
+        "accent": "#94A3B8", "btn_grad": "linear-gradient(135deg, #D4AF37, #856014)",
         "card_bg": "rgba(35, 30, 20, 0.6)"
     },
     "Chicago Black Hawks": {
         "bg_top": "#2A0A0A", "bg_bottom": "#0A0A0A",
         "primary": "#EF4444", "primary_glow": "rgba(239,68,68,0.4)",
-        "accent": "#F8FAFC",
-        "btn_grad": "linear-gradient(135deg, #EF4444, #991B1B)",
+        "accent": "#F8FAFC", "btn_grad": "linear-gradient(135deg, #EF4444, #991B1B)",
         "card_bg": "rgba(30, 10, 10, 0.6)"
     },
     "Seattle Kraken": {
         "bg_top": "#081E2D", "bg_bottom": "#030B14",
         "primary": "#67E8F9", "primary_glow": "rgba(103,232,249,0.4)",
-        "accent": "#F97316",
-        "btn_grad": "linear-gradient(135deg, #06B6D4, #0369A1)",
+        "accent": "#F97316", "btn_grad": "linear-gradient(135deg, #06B6D4, #0369A1)",
         "card_bg": "rgba(10, 25, 40, 0.6)"
     },
     "Buffalo Sabres": {
         "bg_top": "#0B1B36", "bg_bottom": "#050A14",
         "primary": "#FACC15", "primary_glow": "rgba(250,204,21,0.4)",
-        "accent": "#60A5FA",
-        "btn_grad": "linear-gradient(135deg, #3B82F6, #FACC15)",
+        "accent": "#60A5FA", "btn_grad": "linear-gradient(135deg, #3B82F6, #FACC15)",
         "card_bg": "rgba(15, 25, 45, 0.6)"
     },
     "Philadelphia Flyers": {
         "bg_top": "#2D1608", "bg_bottom": "#0A0502",
         "primary": "#F97316", "primary_glow": "rgba(249,115,22,0.4)",
-        "accent": "#F8FAFC",
-        "btn_grad": "linear-gradient(135deg, #F97316, #111111)",
+        "accent": "#F8FAFC", "btn_grad": "linear-gradient(135deg, #F97316, #111111)",
         "card_bg": "rgba(35, 15, 5, 0.6)"
     },
     "UCKA MOCKBA": {
         "bg_top": "#2A0A10", "bg_bottom": "#0A1020",
         "primary": "#E11D48", "primary_glow": "rgba(225,29,72,0.4)",
-        "accent": "#FBBF24",
-        "btn_grad": "linear-gradient(135deg, #E11D48, #881337)",
+        "accent": "#FBBF24", "btn_grad": "linear-gradient(135deg, #E11D48, #881337)",
         "card_bg": "rgba(30, 10, 15, 0.6)"
     },
     "New-York Rangers": {
         "bg_top": "#0A1930", "bg_bottom": "#050814",
         "primary": "#3B82F6", "primary_glow": "rgba(59,130,246,0.4)",
-        "accent": "#EF4444",
-        "btn_grad": "linear-gradient(135deg, #3B82F6, #1E3A8A)",
+        "accent": "#EF4444", "btn_grad": "linear-gradient(135deg, #3B82F6, #1E3A8A)",
         "card_bg": "rgba(10, 20, 40, 0.6)"
     },
     "Vancouver Canucks": {
         "bg_top": "#0A1C2A", "bg_bottom": "#051012",
         "primary": "#10B981", "primary_glow": "rgba(16,185,129,0.4)",
-        "accent": "#3B82F6",
-        "btn_grad": "linear-gradient(135deg, #3B82F6, #10B981)",
+        "accent": "#3B82F6", "btn_grad": "linear-gradient(135deg, #3B82F6, #10B981)",
         "card_bg": "rgba(10, 25, 30, 0.6)"
     }
 }
@@ -670,8 +1021,7 @@ THEMES = {
 DEFAULT_THEME = {
     "bg_top": "#1E293B", "bg_bottom": "#0B1120",
     "primary": "#38BDF8", "primary_glow": "rgba(56,189,248,0.4)",
-    "accent": "#94A3B8",
-    "btn_grad": "linear-gradient(135deg, #0284C7, #0369A1)",
+    "accent": "#94A3B8", "btn_grad": "linear-gradient(135deg, #0284C7, #0369A1)",
     "card_bg": "rgba(30, 41, 59, 0.5)"
 }
 
@@ -716,8 +1066,6 @@ tab_equipes, tab_transactions, tab_reglements, tab_repechage, tab_recrues = st.t
 # ONGLET 1 : ÉQUIPES & PRIX
 # =========================================================
 with tab_equipes:
-    limites = TEAM_QUOTAS.get(team_slug, {"att": 25, "def": 11, "gard": 4})
-
     top_gauche, top_droite = st.columns([1.1, 1.9], vertical_alignment="top")
     with top_gauche:
         c_logo, c_title = st.columns([1, 4], vertical_alignment="center")
@@ -798,7 +1146,6 @@ with tab_equipes:
     nb_gard_tot = len(df_gard) + len(df_banc_gard)
     nb_tot_concession = nb_att_tot + nb_def_tot + nb_gard_tot
 
-    # 1. Vérification stricte des barèmes par position
     part_att_ok = (19 <= len(df_att) <= 25)
     tot_att_ok = (nb_att_tot <= 80)
     stat_att = part_att_ok and tot_att_ok
@@ -811,11 +1158,9 @@ with tab_equipes:
     tot_gard_ok = (nb_gard_tot <= 18)
     stat_gard = part_gard_ok and tot_gard_ok
 
-    # 2. Total Concession conforme UNIQUEMENT si toutes les positions sont conformes
     tot_glob_ok = (nb_tot_concession <= 128)
     stat_globale = tot_glob_ok and stat_att and stat_def and stat_gard
 
-    # 3. Fonction de style pour les alertes rouges
     def get_card_style(is_ok):
         if is_ok:
             return f"background: {t['card_bg']}; backdrop-filter: blur(10px); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 12px; padding: 12px; text-align: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5);"
@@ -877,9 +1222,6 @@ with tab_equipes:
     r_def, g_def = find_1_to_1_swaps(df_def, df_banc_def)
     r_gard, g_gard = find_1_to_1_swaps(df_gard, df_banc_gard)
 
-    # =========================================================
-    # BARRE D'ACTION (VERROUILLÉE POUR LES VISITEURS)
-    # =========================================================
     c1, c2, c3 = st.columns([4, 1.2, 1.2])
     with c1: st.info(f"🟢 **Statut API LNH** : {api_status}")
 
@@ -903,13 +1245,12 @@ with tab_equipes:
 
     with c3:
         if is_admin:
-            if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary"):
+            if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary", help="Réinitialise les alignements, recrues et grilles de repêchage depuis les fichiers CSV/Excel."):
                 init_rosters_from_csv()
                 init_recrues_from_csv()
-                abbrs = list(TEAM_ABBR_MAP.values())
-                for annee in ["2026", "2027", "2028"]:
-                    st.session_state[f"df_draft_{annee}"] = pd.DataFrame({t: [t]*15 for t in abbrs}, index=[f"Ronde {i}" for i in range(1, 16)])
-                import_excel_transactions()
+                init_drafts_from_excel()
+                st.session_state["app_trade_history"] = []
+                st.session_state["last_trade_backup"] = None
                 for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
                 save_state()
                 st.success("✅ Base de données rechargée avec succès !")
@@ -932,23 +1273,15 @@ with tab_equipes:
         else:
             st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
 
-    # =========================================================
-    # PERMUTATION MANUELLE (MASQUÉE POUR LES VISITEURS)
-    # =========================================================
     if is_admin:
         with st.expander("🛠️ PERMUTATION MANUELLE (Monter, descendre ou combler)"):
             pos_choix = st.radio("Position à modifier :", ["Attaquants", "Défenseurs", "Gardiens"], horizontal=True, key=f"man_pos_{team_slug}")
-            min_att, min_def, min_gard = 19, 7, 2
-
             if pos_choix == "Attaquants":
-                df_p, df_b, k_p, k_b = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att"
-                min_p, max_p = min(min_att, limites["att"]), limites["att"]
+                df_p, df_b, k_p, k_b, min_p, max_p = df_att, df_banc_att, f"{team_slug}_df_att", f"{team_slug}_df_banc_att", 19, 25
             elif pos_choix == "Défenseurs":
-                df_p, df_b, k_p, k_b = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def"
-                min_p, max_p = min(min_def, limites["def"]), limites["def"]
+                df_p, df_b, k_p, k_b, min_p, max_p = df_def, df_banc_def, f"{team_slug}_df_def", f"{team_slug}_df_banc_def", 7, 11
             else:
-                df_p, df_b, k_p, k_b = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard"
-                min_p, max_p = min(min_gard, limites["gard"]), limites["gard"]
+                df_p, df_b, k_p, k_b, min_p, max_p = df_gard, df_banc_gard, f"{team_slug}_df_gard", f"{team_slug}_df_banc_gard", 2, 4
 
             real_p_list = [p for p in df_p["Joueurs"].tolist() if p != "[Carreau Libre]"]
             real_b_list = df_b["Joueurs"].tolist()
@@ -992,7 +1325,7 @@ with tab_equipes:
         if len(df) < m: return pd.concat([df, pd.DataFrame([{"No": i, "Joueurs": "[Carreau Libre]", "T": "—", "A": 0, "EXP": 0, "PJ": 0, "Pts": 0} for i in range(len(df)+1, m+1)])], ignore_index=True)
         return df.copy()
 
-    df_att_disp, df_def_disp, df_gard_disp = fill_empty(df_att, limites["att"]), fill_empty(df_def, limites["def"]), fill_empty(df_gard, limites["gard"])
+    df_att_disp, df_def_disp, df_gard_disp = fill_empty(df_att, 25), fill_empty(df_def, 11), fill_empty(df_gard, 4)
 
     def color_part(r, rl): return ['background-color: transparent; color: #475569; font-style: italic']*len(r) if r["Joueurs"]=="[Carreau Libre]" else (['background-color: #7F1D1D; color: #FECACA; font-weight: bold']*len(r) if afficher_couleurs and r["Joueurs"] in rl else ['background-color: rgba(15,23,42,0.6); color: #F8FAFC']*len(r))
     def color_banc(r, gl): return ['background-color: #064E3B; color: #D1FAE5; font-weight: bold']*len(r) if afficher_couleurs and r["Joueurs"] in gl else (['background-color: rgba(30,41,59,0.4); color: #94A3B8']*len(r))
@@ -1001,15 +1334,15 @@ with tab_equipes:
 
     co1, co2, co3 = st.columns([1, 1, 1])
     with co1:
-        st.subheader(f"🏒 Attaquants Partants ({len(df_att)} / {limites['att']})")
+        st.subheader(f"🏒 Attaquants Partants ({len(df_att)} / 25)")
         st.dataframe(df_att_disp.style.apply(color_part, rl=r_att, axis=1), hide_index=True, use_container_width=True, height=540, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Attaquants : {int(df_att['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
-        st.subheader(f"🛡️ Défenseurs Partants ({len(df_def)} / {limites['def']})")
+        st.subheader(f"🛡️ Défenseurs Partants ({len(df_def)} / 11)")
         st.dataframe(df_def_disp.style.apply(color_part, rl=r_def, axis=1), hide_index=True, use_container_width=True, height=280, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Défenseurs : {int(df_def['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
-        st.subheader(f"🥅 Gardiens Partants ({len(df_gard)} / {limites['gard']})")
+        st.subheader(f"🥅 Gardiens Partants ({len(df_gard)} / 4)")
         st.dataframe(df_gard_disp.style.apply(color_part, rl=r_gard, axis=1), hide_index=True, use_container_width=True, height=160, column_config=COL_CONF)
         st.markdown(f"<div style='color:{t['primary']}; font-weight:900;'>Total Gardiens : {int(df_gard['Pts'].sum())} pts</div>", unsafe_allow_html=True)
         st.divider()
@@ -1025,200 +1358,260 @@ with tab_equipes:
         st.dataframe(df_banc_gard.style.apply(color_banc, gl=g_gard, axis=1), hide_index=True, use_container_width=True, height=400, column_config=COL_CONF)
 
 # =========================================================
-# ONGLET 2 : CENTRE DES TRANSACTIONS (EXCEL PROTÉGÉ)
+# ONGLET 2 : CENTRE DES TRANSACTIONS (ÉCHANGES DIRECTS + ARCHIVES)
 # =========================================================
 with tab_transactions:
     st.markdown(f"<h1 style='color:{t['primary']};'>🔄 CENTRE OFFICIEL DES TRANSACTIONS</h1>", unsafe_allow_html=True)
+
+    # --- BLOC 1 : CONSOLE D'ÉCHANGE DIRECT (COMMISSAIRE UNIQUEMENT) ---
+    if is_admin:
+        with st.expander("🔁 EFFECTUER UN NOUVEL ÉCHANGE DIRECT (JOUEURS, RECRUES & CHOIX 2027-2028)", expanded=True):
+            team_list = list(POOLERS.keys())
+            col_t1, col_t2, col_undo = st.columns([2, 2, 1.3], vertical_alignment="bottom")
+
+            with col_t1:
+                trade_team_a = st.selectbox("🏒 Équipe A :", team_list, index=0, key="trade_sel_a")
+            with col_t2:
+                other_teams = [tm for tm in team_list if tm != trade_team_a]
+                trade_team_b = st.selectbox("🏒 Équipe B :", other_teams, index=0, key="trade_sel_b")
+            with col_undo:
+                has_backup = st.session_state.get("last_trade_backup") is not None
+                if st.button("↩️ ANNULER DERNIER ÉCHANGE", use_container_width=True, disabled=not has_backup, help="Restaure exactement l'état juste avant la dernière transaction."):
+                    if undo_last_trade():
+                        st.success("✅ Dernière transaction annulée! Alignements et choix restaurés.")
+                        st.rerun()
+
+            players_a, picks_a = get_team_trade_assets(trade_team_a)
+            players_b, picks_b = get_team_trade_assets(trade_team_b)
+
+            map_p_a = {p["label"]: p for p in players_a}
+            map_pk_a = {pk["label"]: pk for pk in picks_a}
+            map_p_b = {p["label"]: p for p in players_b}
+            map_pk_b = {pk["label"]: pk for pk in picks_b}
+
+            col_a_box, col_b_box = st.columns(2)
+            with col_a_box:
+                st.markdown(f"#### 📤 Ce que **{trade_team_a}** cède :")
+                sel_p_a_labels = st.multiselect("Joueurs / Recrues de l'équipe A :", options=list(map_p_a.keys()), key=f"ms_p_a_{SLUG_MAP[trade_team_a]}")
+                sel_pk_a_labels = st.multiselect("Choix de repêchage (2027/2028) de l'équipe A :", options=list(map_pk_a.keys()), key=f"ms_pk_a_{SLUG_MAP[trade_team_a]}")
+
+            with col_b_box:
+                st.markdown(f"#### 📤 Ce que **{trade_team_b}** cède :")
+                sel_p_b_labels = st.multiselect("Joueurs / Recrues de l'équipe B :", options=list(map_p_b.keys()), key=f"ms_p_b_{SLUG_MAP[trade_team_b]}")
+                sel_pk_b_labels = st.multiselect("Choix de repêchage (2027/2028) de l'équipe B :", options=list(map_pk_b.keys()), key=f"ms_pk_b_{SLUG_MAP[trade_team_b]}")
+
+            out_a = [map_p_a[l] for l in sel_p_a_labels]
+            out_b = [map_p_b[l] for l in sel_p_b_labels]
+            pk_out_a = [map_pk_a[l] for l in sel_pk_a_labels]
+            pk_out_b = [map_pk_b[l] for l in sel_pk_b_labels]
+
+            has_selection = bool(out_a or out_b or pk_out_a or pk_out_b)
+
+            if has_selection:
+                st.markdown("---")
+                auto_fill = st.checkbox("⚡ Combler automatiquement les postes de partants libérés avec les meilleurs joueurs du banc", value=True)
+                sim = simulate_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b, auto_fill_starters=auto_fill)
+
+                st.markdown("### 🔍 APERÇU & VÉRIFICATION AVANT CONFIRMATION")
+
+                prev1, prev2 = st.columns(2)
+                with prev1:
+                    sa = sim["stats_a"]
+                    st.info(
+                        f"**Impact sur {trade_team_a} (Après échange) :**\n\n"
+                        f"• Attaquants : **{sa['att'][0]}** partants / {sa['att'][1]} total\n\n"
+                        f"• Défenseurs : **{sa['def'][0]}** partants / {sa['def'][1]} total\n\n"
+                        f"• Gardiens : **{sa['gard'][0]}** partants / {sa['gard'][1]} total\n\n"
+                        f"• Concession : **{sa['total']} / 128**"
+                    )
+                with prev2:
+                    sb = sim["stats_b"]
+                    st.info(
+                        f"**Impact sur {trade_team_b} (Après échange) :**\n\n"
+                        f"• Attaquants : **{sb['att'][0]}** partants / {sb['att'][1]} total\n\n"
+                        f"• Défenseurs : **{sb['def'][0]}** partants / {sb['def'][1]} total\n\n"
+                        f"• Gardiens : **{sb['gard'][0]}** partants / {sb['gard'][1]} total\n\n"
+                        f"• Concession : **{sb['total']} / 128**"
+                    )
+
+                if sim["notes"] or sim["auto_promos"]:
+                    details_txt = "\n".join([f"- {n}" for n in sim["notes"] + sim["auto_promos"]])
+                    st.markdown(f"**Mouvements automatiques prévus :**\n{details_txt}")
+
+                for err in sim["errors"]:
+                    st.error(err)
+                for wrn in sim["warnings"]:
+                    st.warning(wrn)
+
+                force_quota = False
+                if sim["warnings"] and not sim["errors"]:
+                    force_quota = st.checkbox("⚠️ Forcer la transaction malgré le dépassement de quota maximum (Mode Commissaire)")
+
+                can_execute = (len(sim["errors"]) == 0) and (len(sim["warnings"]) == 0 or force_quota)
+
+                if st.button("✅ CONFIRMER ET ENREGISTRER LA TRANSACTION", type="primary", use_container_width=True, disabled=not can_execute):
+                    execute_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b, sim)
+                    st.success("🎉 Transaction enregistrée! Alignements, choix de repêchage et banque des recrues mis à jour.")
+                    st.rerun()
+    else:
+        st.info("ℹ️ **Mode Consultation** : Connectez-vous avec le mot de passe commissaire dans le menu latéral pour enregistrer un échange en direct.")
+
+    st.divider()
+
+    # --- BLOC 2 : NOUVELLES TRANSACTIONS ENREGISTRÉES DANS L'APPLICATION ---
+    st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900;'>🆕 TRANSACTIONS ENREGISTRÉES SUR LA PLATEFORME</h3>", unsafe_allow_html=True)
+    app_hist = st.session_state.get("app_trade_history", [])
+    if app_hist:
+        df_app_hist = pd.DataFrame(app_hist)
+        st.dataframe(df_app_hist, use_container_width=True, hide_index=True)
+        csv_bytes = df_app_hist.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label="📥 Télécharger ces transactions (CSV / Excel)",
+            data=csv_bytes,
+            file_name=f"transactions_phdm_{datetime.now().strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+    else:
+        st.caption("Aucune nouvelle transaction effectuée directement sur la plateforme depuis le chargement de la base.")
+
+    st.divider()
+
+    # --- BLOC 3 : ARCHIVES HISTORIQUES DU FICHIER EXCEL (LECTURE SEULE) ---
+    st.markdown(f"<h3 style='color:#94A3B8; font-weight:900;'>📜 ARCHIVES HISTORIQUES DES TRANSACTIONS (EXCEL)</h3>", unsafe_allow_html=True)
     path_excel = get_file_path("gestion_phdm.xlsx")
+
     if os.path.exists(path_excel):
         try:
-            df_t_show = pd.read_excel(path_excel, sheet_name="Transactions")
-            df_t_show = clean_excel_dataframe(df_t_show)
+            xls = pd.ExcelFile(path_excel)
+            sheet_name = find_sheet_by_keyword(path_excel, ["transaction", "echange", "trade"])
 
-            # Identification et conversion du format de date (ex: 12 nov 2026 sans heure)
-            cols_date = [c for c in df_t_show.columns if "date" in str(c).lower()]
-            col_target = cols_date[0] if cols_date else (df_t_show.columns[0] if len(df_t_show.columns) > 0 else None)
+            if sheet_name:
+                df_t_show = pd.read_excel(path_excel, sheet_name=sheet_name)
+                df_t_show = clean_excel_dataframe(df_t_show)
 
-            if col_target:
-                df_t_show[col_target] = df_t_show[col_target].apply(format_date_fr)
+                cols_date = [c for c in df_t_show.columns if "date" in str(c).lower()]
+                col_target = cols_date[0] if cols_date else (df_t_show.columns[0] if len(df_t_show.columns) > 0 else None)
 
-            styler_t = df_t_show.style
-            try: styler_t = styler_t.map(color_empty_cells)
-            except AttributeError: styler_t = styler_t.applymap(color_empty_cells)
-            st.dataframe(styler_t, use_container_width=True, hide_index=True, height=680)
+                if col_target:
+                    df_t_show[col_target] = df_t_show[col_target].apply(format_date_fr)
+
+                styler_t = df_t_show.style
+                try: styler_t = styler_t.map(color_empty_cells)
+                except AttributeError: styler_t = styler_t.applymap(color_empty_cells)
+                st.dataframe(styler_t, use_container_width=True, hide_index=True)
+            else:
+                st.warning(f"⚠️ Aucun onglet de transactions détecté dans `{os.path.basename(path_excel)}`.")
+                st.info(f"📋 **Onglets présents :** {', '.join([f'`{s}`' for s in xls.sheet_names])}")
+
         except PermissionError:
             st.error("⚠️ Le fichier Excel est actuellement ouvert ! Fermez Microsoft Excel puis rafraîchissez la page.")
         except Exception as e:
-            st.warning(f"Impossible de lire l'onglet 'Transactions' : {e}")
+            st.warning(f"Impossible de lire le fichier de transactions : {e}")
     else:
         st.info("Fichier `gestion_phdm.xlsx` introuvable.")
 
 # =========================================================
-# ONGLET 3 : RÈGLEMENTS OFFICIELS DU POOL (MISE À JOUR 2024)
+# ONGLET 3 : RÈGLEMENTS DU POOL (SYNCHRONISÉ AVEC EXCEL)
 # =========================================================
 with tab_reglements:
     st.markdown(f"""
     <div style='background: linear-gradient(135deg, #1E1B4B, #0F172A); border: 2px solid {t['primary']}; padding: 20px; border-radius: 14px; margin-bottom: 25px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.5);'>
-        <h1 style='margin:0; font-weight:900; color: #FFFFFF; font-size: 2.3rem; letter-spacing: 2px;'>📜 RÈGLEMENTS DU PHDM-2</h1>
-        <div style='background: #EA580C; color: #FFFFFF; font-weight: 900; display: inline-block; padding: 6px 20px; border-radius: 20px; font-size: 1.1rem; margin-top: 10px; letter-spacing: 1px;'>
-            MISE À JOUR : 22 NOVEMBRE 2024
+        <h1 style='margin:0; font-weight:900; color: #FFFFFF; font-size: 2.3rem; letter-spacing: 2px;'>📜 RÈGLEMENTS OFFICIELS DU POOL PHDM</h1>
+        <div style='background: #EA580C; color: #FFFFFF; font-weight: 900; display: inline-block; padding: 6px 20px; border-radius: 20px; font-size: 1.05rem; margin-top: 10px; letter-spacing: 1px;'>
+            SAISON OFFICIELLE 2026-2027 • SYNCHRONISÉ AVEC EXCEL
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("⚖️ ARTICLES FONDAMENTAUX (ART. 001 À 003) — DIRECTION ET RÈGLEMENT BETTMAN", expanded=True):
-        st.markdown("""
-        * **ART 001** : Le président et le statisticien ont des **pouvoirs exceptionnels pour l'orientation des règles du pool** qu'ils peuvent utiliser à leur guise pour assurer une fluidité dans les opérations *(règlement Bettman)*. Donc, **IMPORTANT**, les règles du pool sont un cadre et non une fin. Le jugement et le gros bon sens du **STATISTICIEN ET DU PRÉSIDENT AURONT TOUJOURS PRÉSÉANCE SUR TOUS LES ARTICLES**. C'est le pouvoir du règlement Bettman.
-        * **ART 002** : Si vous avez une plainte, **celui qui prend les plaintes est le président et le seul moyen de communication permise sera le cellulaire ou par courriel en privé**. Si vous vous sentez lésé, et que vous exprimez votre frustration par courriel en mettant un autre DG, automatiquement **vous perdez votre cause sans discussion**. Si vous insistez à contester en mettant tout le monde en CC, le DG en question **PERDRA SON 1ER CHOIX AU PROCHAIN REPÊCHAGE**.
-        * **ART 003** : Il n'y a **pas de vote démocratique** pour changer le président OU le statisticien. Ceux-ci sont **nommés à vie**.
-        """)
+    path_excel = get_file_path("gestion_phdm.xlsx")
+    reglements_loaded = False
 
-    col_r1, col_r2 = st.columns(2)
+    if os.path.exists(path_excel):
+        try:
+            xls = pd.ExcelFile(path_excel)
+            sheet_reg = find_sheet_by_keyword(path_excel, ["reglement", "regle"])
 
-    with col_r1:
-        with st.expander("💰 SECTION 1 — COÛT DE LA FRANCHISE ET PRIX DISTRIBUÉS", expanded=True):
-            st.markdown("""
-            * **Art. 101** : Le coût d'une franchise par année est de **50$**. Le paiement doit être acquitté au moment de la première rencontre en début de saison.
-            * **Art. 102** : Les prix sont distribués à la fin de la saison de la façon suivante :
-              * 🥇 **1- GAGNANT DU POOL :** 345$
-              * 🏒 **2- GAGNANT POSITION ATTAQUANTS :** 50$
-              * 🛡️ **3- GAGNANT DES DÉFENSEURS :** 50$
-              * 🥅 **4- GAGNANT DES GARDIENS :** 50$
-              * 📊 **6- STATISTICIEN :** 55$
-            * **Art 103** : Le gagnant du pool **ne peut pas gagner les positions de l'Art. 102**.
-            * **Art 104** : SI UN PARTICIPANT DÉMISSIONNE DURANT LA SAISON, **AUCUN REMBOURSEMENT NE SERA FAIT** VU QUE LA SOMME A DÉJÀ ÉTÉ ENGAGÉE.
-            """)
+            if sheet_reg:
+                df_reg_raw = pd.read_excel(path_excel, sheet_name=sheet_reg, header=None)
+                df_reg_raw = df_reg_raw.dropna(how="all").reset_index(drop=True)
 
-        with st.expander("📅 SECTION 2 — LISTE DES RENCONTRES DU POOL PHDM-2"):
-            st.markdown("""
-            * **Art. 201** : Lors des réunions, aucune décision ou vote ne peuvent être pris sans le quorum. Pour qu'il y ait quorum, il doit y avoir **50% + 1** des directeurs généraux présents à la rencontre.
-            * **Art. 202** : Une rencontre minimale est prévue lors d'une année (draft amateur), rencontre physique ou virtuelle.
-            * **Art. 203** : Dans la mesure du possible, les rencontres se déroulent sur Messenger par Facebook.
-            * **Art. 204** : Lors de la rencontre du repêchage amateur, **ON DÉCIDE DES CHANGEMENTS DE RÈGLEMENTS**.
-            """)
+                if not df_reg_raw.empty:
+                    reglements_loaded = True
+                    c_search, c_mode = st.columns([3, 1], vertical_alignment="center")
+                    with c_search:
+                        rech_reg = st.text_input("🔎 Rechercher dans les règlements (mot-clé, numéro d'article...) :", "", key="reg_search_box_phdm")
+                    with c_mode:
+                        vue_tableau = st.toggle("📋 Vue Grille / Tableau", value=False)
 
-        with st.expander("👥 SECTION 3 — RÈGLES PRÉCISES POUR LES ALIGNEMENTS & QUOTAS", expanded=True):
-            st.markdown("""
-            * **Art. 301** : Une concession doit se composer d'un **maximum de 80 attaquants, 30 défenseurs et 18 gardiens (128 joueurs au total)**. Un directeur général qui ne respecte pas ce quota doit obligatoirement libérer un joueur dans les secondes qui suivent le repêchage d'un nouveau joueur. Un DG peut faire une offre sur-le-champ pour le joueur libéré, sinon il est scratché. Si nous voulons échanger des joueurs que nous allons libérer, il faut le faire avant le repêchage.
-            * **Art 302** : Un alignement partant en début d'année est constitué de :
-              * **A)** 22 attaquants
-              * **B)** 9 défenseurs
-              * **C)** 3 gardiens
-            * **Art 303** : Le nombre de joueurs dans un alignement peut être différent de celui du départ à la condition qu'il respecte les barèmes suivants :
-              * **A)** Un Minimum de 19 et un Maximum de 25 attaquants
-              * **B)** Un Minimum de 7 et un Maximum de 11 défenseurs
-              * **C)** Un Minimum de 2 et un Maximum de 4 gardiens
-            * **Art 304** : Lorsqu'il y a un joueur qui peut jouer autant comme défenseur qu'attaquant, l'ensemble des DGs, à la majorité, décident à la première rencontre en octobre la position du joueur. Le joueur en question devra toutefois rester à cette position toute la saison.
-            * **ART 305** : En début de saison, vous pouvez mettre tout genre de joueur selon leurs statuts, **SAUF qu'après les 30 matchs, on doit obligatoirement mettre les meilleurs sur le partant**.
-            """)
+                    if vue_tableau:
+                        df_reg_disp = clean_excel_dataframe(df_reg_raw)
+                        if rech_reg:
+                            mask = df_reg_disp.astype(str).apply(lambda col: col.str.contains(rech_reg, case=False, na=False)).any(axis=1)
+                            df_reg_disp = df_reg_disp[mask]
+                        st.dataframe(df_reg_disp, use_container_width=True, hide_index=True)
+                    else:
+                        current_section_title = "⚖️ DISPOSITIONS GÉNÉRALES"
+                        current_section_items = []
+                        sections = []
 
-        with st.expander("📊 SECTION 4 — CALCUL OFFICIEL DES POINTS"):
-            st.markdown("""
-            * **Art. 401** : Le calcul des points pour les attaquants et les défenseurs se fait comme suit :
-              * **A)** Un but équivaut à un point (1 pt)
-              * **B)** Une mention d'aide équivaut à un point (1 pt)
-            * **Art 402** : Le calcul des points pour les gardiens se fait comme suit :
-              * **C)** Une victoire donne **2 points**
-              * **D)** Une nulle (ou défaite en prolongation / fusillade) donne **1 point**
-              * **E)** Un blanchissage donne **1 point** supplémentaire
-            * **Art 403** : Les points de chaque catégorie sont cumulés pour donner un grand total. Le gagnant du pool ne peut pas gagner les positions.
-            * **Art 404** : Le classement officiel est disponible et suivi en direct sur le site internet du pool.
-            """)
+                        for _, row in df_reg_raw.iterrows():
+                            vals = [str(x).strip() for x in row.dropna().values if str(x).strip().lower() not in ['nan', 'none', '']]
+                            if not vals: continue
+                            ligne_texte = " — ".join(vals)
 
-        with st.expander("🚪 SECTION 5 — LIBÉRATION DE JOUEURS"):
-            st.markdown("""
-            * **Art. 501** : Un directeur général peut libérer en tout temps un joueur de sa concession. Il a la responsabilité d'en informer les autres directeurs généraux.
-            * **Art. 502** : Lors du repêchage, si un directeur général atteint la limite permise de joueurs par l'article 301, il doit obligatoirement libérer un joueur sur-le-champ. Par contre, il est permis d'être au-dessus de la limite de 128 joueurs durant l'été, **mais l'équipe doit être légale le 15 septembre de chaque année**.
-            """)
+                            if rech_reg and clean_str(rech_reg) not in clean_str(ligne_texte):
+                                continue
 
-    with col_r2:
-        with st.expander("🔁 SECTION 6 — TRANSACTIONS, COLLUSION & RÈGLE DU 7/10 ANS", expanded=True):
-            st.markdown("""
-            * **Art. 601** : Une transaction peut se faire durant toute l'année sauf entre la date de la fin des transactions (Trade Deadline) et la fin de la saison.
-            * **Art. 602** : Lorsqu'une transaction est conclue, elle doit être annoncée aux autres DG le lendemain au maximum, par les DG concernés.
-            * **Art 603** : Une transaction impliquant un joueur blessé n'est jamais annulée.
-            * **Art 604** : **AUCUNE TRANSACTION CONCLUE (QUELLE QUE SOIT LA TRANSACTION) NE DOIT AVOIR AUCUN COMMENTAIRE SUR LES RÉSEAUX SOCIAUX SINON RISQUE D'ÊTRE EXCLU (EXPULSION DU POOL).**
-            * **Art 605** : Un joueur transigé ne peut pas revenir dans son équipe d'origine dans la même année, mais peut y revenir dans l'entre-saison.
-            * **Art 606** : Une transaction illégale sera sanctionnée durement (exclusion du pool CAR S'IL Y A COLLUSION) si elle pose préjudice à un autre DG (se référer à l'Art 604).
-            * **Art 606.a** : S'il y a collusion, le président du pool et son adjoint feront une analyse et décideront de la marche à suivre.
-            * **Art 606.b** : Si le président et son adjoint font de la collusion, la transaction sera analysée par 2 DGs qui sont en bas de classement.
-            * **Art 607** : **Un joueur ne peut appartenir à une équipe plus de 7 années consécutives sinon il devra être soumis au repêchage, sauf 10 ans pour les gardiens.** Une année d'ancienneté est accumulée pour chaque joueur à la fin de l'année. **6 joueurs par concession peuvent s'abstenir de ce règlement (protection spéciale) :**
-              * **A :** 3 attaquants
-              * **B :** 2 défenseurs
-              * **C :** 1 gardien
-            * **Art 608** : À la date limite des transactions, essayez d'être présent sur votre ordinateur pour ne pas nuire à un DG qui essaie de gagner le pool ou à ses poursuivants.
-            * **Art 609** : Les choix aux repêchages durant la saison ne peuvent être transigés que sur **deux années ouvrables**, mais la troisième année sera ouverte de la fin de saison jusqu'au draft et après le draft on revient à 2 années ouvrables.
-            * **Art 610** : Un joueur qui est sur le banc ne peut pas être monté sur le partant s'il a moins de points que le joueur partant, et surtout s'il y a transaction.
-            * **Art 611** : Pendant la saison morte, si un club est au-dessus de la limite permise dans une des positions, il peut faire des transactions pour devenir légal ou simplement les balloter. Le concurrent doit être légal le **15 septembre de chaque année**.
-            """)
+                            first_val_up = vals[0].upper()
+                            is_section_header = (
+                                len(vals) == 1 and (
+                                    any(first_val_up.startswith(k) for k in ["SECTION", "CHAPITRE", "PARTIE", "TITRE"]) or
+                                    ("ART 00" in first_val_up or "ARTICLE 00" in first_val_up)
+                                )
+                            )
 
-        with st.expander("🎟️ SECTION 7 — REPÊCHAGE ANNUEL DES ESPOIRS", expanded=True):
-            st.markdown("""
-            * **Art. 701** : Dans la mesure du possible, le repêchage doit se dérouler avant le repêchage de la LNH de chaque année.
-            * **Art. 702** : Chaque repêchage comprend **15 rondes**. Évidemment, un directeur général peut, par le biais de transactions, choisir plus de 15 joueurs.
-            * **Art 703** : Si un DG choisit un joueur qui appartient déjà à un autre DG, il peut faire un autre choix dès que l'erreur est constatée. Si c'est durant le draft, il choisit un autre joueur sur-le-champ. Si on s'aperçoit de l'erreur après le draft, le DG choisit un joueur disponible à ce moment.
-            * **Art 704** : *(SI IL Y A ABSENCE)* Lors d'un repêchage, en circonstances exceptionnelles, un DG peut faire une liste papier et demander à un autre DG de repêcher pour lui. Si le DG ne fait pas de liste et ne communique pas ses choix (FaceTime ou autre), **il ne peut pas repêcher et perd ses choix**.
-            * **Art 705** : Pour les choix aux repêchages, à chaque draft de chaque année, on ouvre le tableau officiel des choix.
-            * **Art 706** : Le repêchage se tiendra au mois de **mai ou juin de chaque année**.
-            """)
+                            if is_section_header:
+                                if current_section_items:
+                                    sections.append((current_section_title, current_section_items))
+                                    current_section_items = []
+                                current_section_title = vals[0]
+                            else:
+                                current_section_items.append(vals)
 
-        with st.expander("🗳️ SECTION 8 — MODIFICATIONS AUX RÈGLEMENTS"):
-            st.markdown("""
-            * **Art. 801** : Pour la modification d'un règlement, il faut la majorité du quorum, soit **50% + 1**.
-            * **Art 802** : Tout directeur général peut présenter des ajouts, annulations ou modifications lors d'une rencontre prévue durant l'année. **Aucune discussion, décision ou modification ayant un impact sur les règles ou les DGs ne peut se faire par Internet.** On doit obligatoirement faire le tout en personne lors de nos rencontres.
-            * **Art 803** : Lorsqu'un directeur général est absent d'une réunion, il perd son droit de vote.
-            * **Art 804** : Lorsqu'un règlement est adopté, il a une durée de vie **minimum de 2 ans** avant de pouvoir être modifié.
-            """)
+                        if current_section_items:
+                            sections.append((current_section_title, current_section_items))
 
-        with st.expander("🚑 SECTION 9 — JOUEURS BLESSÉS"):
-            st.markdown("""
-            * **ART 901** : **IL N'Y A AUCUNE RÈGLE POUR JOUEURS BLESSÉS.** *(Pas de liste des blessés distincte)*.
-            """)
+                        if not sections:
+                            st.info("Aucun règlement trouvé correspondant à votre recherche.")
+                        else:
+                            for sec_title, sec_items in sections:
+                                with st.expander(f"📌 {sec_title.upper()}", expanded=True):
+                                    for item in sec_items:
+                                        if len(item) == 1:
+                                            txt = item[0]
+                                            if any(txt.upper().startswith(k) for k in ["ART.", "ART ", "ARTICLE"]):
+                                                st.markdown(f"• **{txt}**")
+                                            else:
+                                                st.markdown(f"<div style='margin-left: 18px; color: #CBD5E1; margin-bottom: 6px;'>{txt}</div>", unsafe_allow_html=True)
+                                        elif len(item) == 2:
+                                            st.markdown(f"• <b style='color:{t['primary']};'>{item[0]} :</b> <span style='color:#F8FAFC;'>{item[1]}</span>", unsafe_allow_html=True)
+                                        else:
+                                            st.markdown(f"• <b style='color:{t['primary']};'>{item[0]}</b> | {' | '.join(item[1:])}")
 
-        with st.expander("⏰ ARTICLES 1000 À 1002 — GESTION DE FIN DE SAISON & PARTANTS"):
-            st.markdown("""
-            * **Art 1000** : Après la fermeture des transactions, le secrétaire du pool fera tous les changements de tous les DGs. La seule fois où le secrétaire consultera un DG sera quand plus de deux joueurs auront le même nombre de points (le DG tranchera). **Tous les meilleurs pointeurs devront obligatoirement être partants et les plus faibles sur le banc.**
-            * **Art 1001** : Durant la saison régulière, chaque DG a l'entière liberté d'effectuer ses changements de partants à volonté (selon les quotas).
-            * **Art 1002** : **À LA FIN DE LA SAISON, LE SECRÉTAIRE SE CHARGERA DE METTRE LES MEILLEURS POINTEURS DE TOUS SUR LES PARTANTS ET LES MOINS BONS SUR LE BANC.**
-            """)
+            else:
+                st.warning(f"⚠️ Aucun onglet `Reglements` trouvé dans `{os.path.basename(path_excel)}`.")
+                st.info(f"📋 **Onglets présents dans Excel :** {', '.join([f'`{s}`' for s in xls.sheet_names])}")
 
-    with st.expander("🏢 SECTION 11 — EXPANSION, ÉQUIPE DISSOUTE & FORMULE DE PROTECTION", expanded=True):
-        st.markdown("""
-        * **Art 1101** : Lors du départ d'un DG, on essaie toujours de lui trouver un remplaçant en lui transmettant l'équipe telle quelle. Si aucun remplaçant n'est trouvé, on applique les **Art. 1103 et 1105**.
-        * **Art 1103** : Lorsqu'un DG démissionne et que personne ne le remplace, il y a un repêchage de dispersion effectué dans son équipe par les autres directeurs généraux. **Le DG ayant terminé dernier repêche en premier, l'avant-dernier en 2e, etc.**
-        * **Art 1104 — EXPANSION DANS LE POOL :**
-          * Chaque équipe doit protéger **UN POURCENTAGE DE JOUEURS EN FONCTION DU CLASSEMENT FINAL** (toutes positions confondues).
-          * Parmi les joueurs protégés, il doit obligatoirement y avoir au moins **2 gardiens ayant joué un minimum de 20 matchs** dans la saison précédente laissés **SANS PROTECTION**.
-          * La nouvelle équipe doit piger **10 joueurs** (toutes positions confondues) dans chaque concession existante (donc 80 joueurs au total).
-          * La nouvelle équipe pige toujours dernière au repêchage amateur. Le nouveau DG ne peut pas prendre plus d'un gardien par équipe parmi ses 10 sélections.
-          * Après avoir acquis ses joueurs et complété le repêchage annuel, le titulaire pige dans la banque de recrues ou les agents libres disponibles pour compléter sa banque.
-          * Chaque année suivant une expansion, on ajoute 10 rondes supplémentaires pour compenser les équipes ayant perdu des joueurs.
-        """)
+        except PermissionError:
+            st.error("⚠️ Le fichier Excel est actuellement ouvert ! Fermez Microsoft Excel puis rafraîchissez la page.")
+        except Exception as e:
+            st.error(f"Erreur lors de la lecture des règlements : {e}")
 
-        st.markdown(f"""
-        <div style='background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin: 15px 0;'>
-            <h4 style='color: {t['primary']}; margin-top:0;'>📋 TABLEAU OFFICIEL DES POURCENTAGES DE PROTECTION (EXPANSION)</h4>
-            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; font-size: 0.95rem;'>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥇 <b>1ère place :</b> 35% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥈 <b>2e place :</b> 40% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🥉 <b>3e place :</b> 45% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>4e place :</b> 50% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>5e place :</b> 55% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>6e place :</b> 60% de joueurs protégés</div>
-                <div style='background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;'>🏅 <b>7e à 12e place :</b> 65% de joueurs protégés</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        * **Art 1105 — DISSOLUTION D'UN CLUB :**
-          * Après avoir cherché un candidat, si un vote de réduire le nombre de participants est accepté par les DGs, on choisit une date pour dissoudre le club en question.
-          * Pour la dissolution, le classement général inversé est appliqué pour le repêchage des joueurs : **le draft s'effectue de 11 à 1, et la 2e ronde s'effectue également de 11 à 1** (ordre inversé continu).
-          * Les choix de repêchage sont aussi mis dans la dissolution s'il y a lieu *(ex: 13 choix disponibles pour 2026 et 14 choix pour 2027)*.
-        """)
+    if not reglements_loaded and not os.path.exists(path_excel):
+        st.info("Fichier `gestion_phdm.xlsx` introuvable pour charger les règlements.")
 
 # =========================================================
-# ONGLET 4 : CHOIX DE REPÊCHAGE & ENCAN COMPLET
+# ONGLET 4 : CHOIX DE REPÊCHAGE & ENCAN COMPLET (2027 & 2028)
 # =========================================================
 DRAFT_TEAM_STYLES = {
     "PHI": {"bg": "#EA580C", "color": "#FFFFFF", "border": "#C2410C"},
@@ -1240,250 +1633,161 @@ with tab_repechage:
     with c_head:
         st.markdown("<h2 style='margin: 0; padding: 0; font-weight: 900; color: #F8FAFC; text-shadow: 0 0 10px rgba(255,255,255,0.2);'>🎟️ CENTRE DU REPÊCHAGE</h2>", unsafe_allow_html=True)
 
-    path_excel = get_file_path("gestion_phdm.xlsx")
-    excel_draft_found = False
+    available_years = [yr for yr in DRAFT_YEARS if f"df_draft_{yr}" in st.session_state]
 
-    if os.path.exists(path_excel):
-        try:
-            xls = pd.ExcelFile(path_excel)
-            draft_sheets = [s for s in xls.sheet_names if "repechage" in clean_str(s) or "draft" in clean_str(s)]
+    if available_years:
+        with c_ctrl1:
+            cohorte_labels = [f"Repêchage {yr}" for yr in available_years]
+            onglet_choisi = st.radio("Sélectionnez la cohorte :", cohorte_labels, horizontal=True, label_visibility="collapsed")
+        with c_ctrl2:
+            e_filtre = st.selectbox("🔎 Mettre en valeur (DG) :", ["Toutes les équipes"] + list(TEAM_ABBR_MAP.values()), label_visibility="collapsed", key="filt_draft_live_phdm")
 
-            if draft_sheets:
-                excel_draft_found = True
-                draft_sheets.sort()
+        annee_cohorte = onglet_choisi.replace("Repêchage ", "").strip()
+        df_draft_live = st.session_state[f"df_draft_{annee_cohorte}"].copy()
 
-                with c_ctrl1:
-                    onglet_choisi = st.radio("Sélectionnez la cohorte :", draft_sheets, horizontal=True, label_visibility="collapsed")
-                with c_ctrl2:
-                    e_filtre = st.selectbox("🔎 Mettre en valeur (DG) :", ["Toutes les équipes"] + list(TEAM_ABBR_MAP.values()), label_visibility="collapsed", key="filt_draft_excel")
+        draft_ownership_map = {}
+        for r_label, r_series in df_draft_live.iterrows():
+            m_r = re.search(r'\d+', str(r_label))
+            rd_num = int(m_r.group(0)) if m_r else 1
+            for orig_abbr in TEAM_ABBR_MAP.values():
+                if orig_abbr in df_draft_live.columns:
+                    owner_abbr = to_team_abbr(r_series[orig_abbr]) or orig_abbr
+                    draft_ownership_map[(rd_num, orig_abbr)] = owner_abbr
 
-                m_yr = re.search(r'(2026|2027|2028)', str(onglet_choisi))
-                annee_cohorte = m_yr.group(1) if m_yr else "2026"
+        total_rounds = max(15, len(df_draft_live))
+        all_owned_picks = list(draft_ownership_map.values())
+        counts = pd.Series(all_owned_picks).value_counts()
 
-                df_raw = pd.read_excel(path_excel, sheet_name=onglet_choisi, header=None)
+        st.markdown("---")
 
-                header_idx = 0
-                for idx, row in df_raw.head(10).iterrows():
-                    row_vals = [str(x).upper().strip() for x in row.values]
-                    if sum(1 for tm in row_vals if to_team_abbr(tm) is not None) >= 3 or any("RONDE" in v for v in row_vals):
-                        header_idx = idx
-                        break
+        titre_dash = "CAPITAL DE REPÊCHAGE GLOBAL" if e_filtre == "Toutes les équipes" else f"CAPITAL DE REPÊCHAGE : {e_filtre}"
+        st.markdown(f"<h4 style='color:{t['primary']}; font-weight:900; text-transform:uppercase; margin-bottom:15px; font-size:1.05rem; letter-spacing:1px;'>📊 {titre_dash} ({onglet_choisi.upper()})</h4>", unsafe_allow_html=True)
 
-                new_cols = []
-                for i, val in enumerate(df_raw.iloc[header_idx]):
-                    val_str = str(val).strip()
-                    abbr = to_team_abbr(val_str)
-                    if i == 0 and (abbr is None or "RONDE" in val_str.upper() or val_str.isdigit()):
-                        new_cols.append("Ronde")
-                    elif abbr:
-                        new_cols.append(abbr)
-                    else:
-                        new_cols.append(val_str.upper() if val_str and val_str.upper() not in ['NAN', 'NONE'] else f"Col_{i}")
+        badges_list = []
+        for team_abbr in TEAM_ABBR_MAP.values():
+            count = counts.get(team_abbr, 0)
+            info = DRAFT_TEAM_STYLES.get(team_abbr, {"bg": "#334155", "color": "#FFFFFF", "border": "#475569"})
+            opacity = "1.0" if (e_filtre == "Toutes les équipes" or team_abbr == e_filtre) else "0.25"
+            box_shadow = f"box-shadow: 0 0 20px {info['bg']}; transform: scale(1.05);" if (e_filtre == team_abbr) else "box-shadow: 0 4px 10px rgba(0,0,0,0.4);"
 
-                df_draft_excel = df_raw.iloc[header_idx+1:].copy()
-                df_draft_excel.columns = new_cols
-                df_draft_excel = df_draft_excel.dropna(how='all').reset_index(drop=True)
+            badge_item = (
+                f"<div style='background-color:{info['bg']}; color:{info['color']}; border:1px solid {info['border']}; "
+                f"border-radius:12px; padding:10px 15px; display:inline-flex; flex-direction:column; align-items:center; "
+                f"justify-content:center; min-width:95px; {box_shadow} opacity:{opacity}; transition:all 0.3s ease;'>"
+                f"<span style='font-size:1.3rem; font-weight:900; letter-spacing:1px; margin-bottom:8px; text-shadow:0 2px 4px rgba(0,0,0,0.5);'>{team_abbr}</span>"
+                f"<span style='background-color:rgba(0,0,0,0.4); color:#FFFFFF; border-radius:20px; padding:4px 14px; font-size:0.95rem; font-weight:800; box-shadow:inset 0 2px 6px rgba(0,0,0,0.6);'>{count} CHOIX</span>"
+                f"</div>"
+            )
+            badges_list.append(badge_item)
 
-                for col in df_draft_excel.columns:
-                    df_draft_excel[col] = df_draft_excel[col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip().str.upper()
-                    df_draft_excel[col] = df_draft_excel[col].replace(['NAN', 'NONE', ''], '')
+        badges_html = f"<div style='display:flex; flex-wrap:wrap; gap:15px; margin-bottom:25px; justify-content:flex-start;'>{''.join(badges_list)}</div>"
+        st.markdown(badges_html, unsafe_allow_html=True)
 
-                # --- CARTE DE POSSESSION DES CHOIX ---
-                draft_ownership_map = {}
+        chrono_rows = []
+        pick_overall = 1
 
-                # 1. Lecture de la matrice Excel
-                for idx_r, row_d in df_draft_excel.iterrows():
-                    m_r = re.search(r'\d+', str(row_d.get("Ronde", "")))
-                    rd_num = int(m_r.group(0)) if m_r else (idx_r + 1)
-                    for orig_abbr in TEAM_ABBR_MAP.values():
-                        if orig_abbr in df_draft_excel.columns:
-                            owner = extract_owner_abbr(row_d[orig_abbr])
-                            if owner: draft_ownership_map[(rd_num, orig_abbr)] = owner
+        for r_idx in range(total_rounds):
+            r_num = r_idx + 1
+            for rank_in_round, orig_team_meta in enumerate(draft_base_order, 1):
+                orig_team = orig_team_meta["team"]
+                orig_abbr = TEAM_ABBR_MAP.get(orig_team, "")
+                orig_score = orig_team_meta["total"]
+                owner_abbr = draft_ownership_map.get((r_num, orig_abbr), orig_abbr)
+                owner_team = ABBR_TO_TEAM.get(owner_abbr, owner_abbr)
+                owner_dg = POOLERS.get(owner_team, "N/A")
+                is_traded = (owner_abbr != orig_abbr)
 
-                # 2. Synchronisation avec les transactions en mémoire
-                k_mem = f"df_draft_{annee_cohorte}"
-                if k_mem in st.session_state:
-                    df_mem = st.session_state[k_mem]
-                    for r_label, r_series in df_mem.iterrows():
-                        m_r = re.search(r'\d+', str(r_label))
-                        rd_num = int(m_r.group(0)) if m_r else 1
-                        for orig_col, mem_val in r_series.items():
-                            slot_abbr = to_team_abbr(orig_col)
-                            owner_abbr = extract_owner_abbr(mem_val)
-                            if slot_abbr and owner_abbr:
-                                if owner_abbr != slot_abbr:
-                                    draft_ownership_map[(rd_num, slot_abbr)] = owner_abbr
-                                elif (rd_num, slot_abbr) not in draft_ownership_map:
-                                    draft_ownership_map[(rd_num, slot_abbr)] = slot_abbr
+                statut = f"🔁 Acquis de {orig_abbr}" if is_traded else "✅ Choix d'origine"
 
-                # 3. Attribution par défaut sécurisée
-                total_rounds = max(15, len(df_draft_excel))
-                for rd_num in range(1, total_rounds + 1):
-                    for orig_abbr in TEAM_ABBR_MAP.values():
-                        if (rd_num, orig_abbr) not in draft_ownership_map:
-                            draft_ownership_map[(rd_num, orig_abbr)] = orig_abbr
+                chrono_rows.append({
+                    "Choix": pick_overall,
+                    "Ronde": f"Ronde {r_num}",
+                    "Rang": rank_in_round,
+                    "Équipe Repêchant": f"{owner_team} ({owner_abbr})",
+                    "Propriétaire (DG)": owner_dg,
+                    "Choix Original De": f"{orig_team} ({orig_score} pts)",
+                    "Statut": statut,
+                    "_owner_abbr": owner_abbr,
+                    "_r_num": r_num
+                })
+                pick_overall += 1
 
-                # 4. REGLE OFFICIELLE : Application stricte des choix transigés par MCW pour 2026
-                if annee_cohorte in ["2026", "26"] or "2026" in str(onglet_choisi):
-                    draft_ownership_map[(3, "MCW")] = "NYR"
-                    draft_ownership_map[(6, "MCW")] = "CHI"
+        df_chrono = pd.DataFrame(chrono_rows)
 
-                # 5. Synchronisation de la grille Excel avec les transactions pour l'affichage matriciel
-                for (rd_num, orig_abbr), owner_abbr in draft_ownership_map.items():
-                    if orig_abbr in df_draft_excel.columns:
-                        for idx_r, row_d in df_draft_excel.iterrows():
-                            m_r = re.search(r'\d+', str(row_d.get("Ronde", "")))
-                            r_num = int(m_r.group(0)) if m_r else (idx_r + 1)
-                            if r_num == rd_num:
-                                df_draft_excel.at[idx_r, orig_abbr] = owner_abbr
-                                break
+        st.markdown("""
+        <div style='background:rgba(15,23,42,0.8); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom:20px;'>
+            <h3 style='margin:0 0 10px 0; color:#38BDF8; font-weight:900;'>📜 DÉROULEMENT OFFICIEL DU REPÊCHAGE (ORDRE PAR RANG)</h3>
+            <p style='color:#94A3B8; margin:0 0 15px 0; font-size:0.95rem;'>L'ordre de base commence par l'équipe ayant le <b>moins de points</b> au classement général (#1) et termine par la championne (#11). Tous les choix transigés appartiennent à leur propriétaire actuel.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-                # --- COMPTABILISATION DES CHOIX ---
-                all_owned_picks = list(draft_ownership_map.values())
-                counts = pd.Series(all_owned_picks).value_counts()
+        col_sel_ronde, col_info_rep = st.columns([1.5, 2.5], vertical_alignment="center")
+        with col_sel_ronde:
+            options_rondes = ["Toutes les rondes (1 à 15)"] + [f"Ronde {i}" for i in range(1, total_rounds + 1)]
+            ronde_selectionnee = st.selectbox("🎯 **SÉLECTIONNER LA RONDE À AFFICHER :**", options_rondes, key="choix_ronde_box_phdm")
 
-                st.markdown("---")
+        df_view = df_chrono.copy()
+        if e_filtre != "Toutes les équipes":
+            df_view = df_view[df_view["_owner_abbr"] == e_filtre]
+        if ronde_selectionnee != "Toutes les rondes (1 à 15)":
+            df_view = df_view[df_view["Ronde"] == ronde_selectionnee]
 
-                # --- BADGES DE CAPITAL DE REPÊCHAGE ---
-                titre_dash = "CAPITAL DE REPÊCHAGE GLOBAL" if e_filtre == "Toutes les équipes" else f"CAPITAL DE REPÊCHAGE : {e_filtre}"
-                st.markdown(f"<h4 style='color:{t['primary']}; font-weight:900; text-transform:uppercase; margin-bottom:15px; font-size:1.05rem; letter-spacing:1px;'>📊 {titre_dash} ({onglet_choisi.upper()})</h4>", unsafe_allow_html=True)
+        df_display = df_view.drop(columns=["_owner_abbr", "_r_num"]).reset_index(drop=True)
 
-                badges_list = []
-                for team_abbr in TEAM_ABBR_MAP.values():
-                    count = counts.get(team_abbr, 0)
-                    info = DRAFT_TEAM_STYLES.get(team_abbr, {"bg": "#334155", "color": "#FFFFFF", "border": "#475569"})
-                    opacity = "1.0"
-                    if e_filtre != "Toutes les équipes" and team_abbr != e_filtre:
-                        opacity = "0.25"
-                    box_shadow = f"box-shadow: 0 0 20px {info['bg']}; transform: scale(1.05);" if (e_filtre == team_abbr) else "box-shadow: 0 4px 10px rgba(0,0,0,0.4);"
+        with col_info_rep:
+            st.markdown(f"<div style='font-weight:800; color:#F8FAFC; text-align:right;'>Nombre de choix affichés : <span style='color:{t['primary']}; font-size:1.2rem;'>{len(df_display)}</span></div>", unsafe_allow_html=True)
 
-                    badge_item = (
-                        f"<div style='background-color:{info['bg']}; color:{info['color']}; border:1px solid {info['border']}; "
-                        f"border-radius:12px; padding:10px 15px; display:inline-flex; flex-direction:column; align-items:center; "
-                        f"justify-content:center; min-width:95px; {box_shadow} opacity:{opacity}; transition:all 0.3s ease;'>"
-                        f"<span style='font-size:1.3rem; font-weight:900; letter-spacing:1px; margin-bottom:8px; text-shadow:0 2px 4px rgba(0,0,0,0.5);'>{team_abbr}</span>"
-                        f"<span style='background-color:rgba(0,0,0,0.4); color:#FFFFFF; border-radius:20px; padding:4px 14px; font-size:0.95rem; font-weight:800; box-shadow:inset 0 2px 6px rgba(0,0,0,0.6);'>{count} CHOIX</span>"
-                        f"</div>"
-                    )
-                    badges_list.append(badge_item)
+        def color_draft_board(row):
+            if "🔁" in str(row["Statut"]):
+                return ['background-color: rgba(30, 58, 138, 0.45); color: #93C5FD; font-weight: 700'] * len(row)
+            return ['background-color: rgba(15, 23, 42, 0.6); color: #F8FAFC'] * len(row)
 
-                badges_html = f"<div style='display:flex; flex-wrap:wrap; gap:15px; margin-bottom:25px; justify-content:flex-start;'>{''.join(badges_list)}</div>"
-                st.markdown(badges_html, unsafe_allow_html=True)
+        chrono_config = {
+            "Choix": st.column_config.NumberColumn("Choix #", format="#%d", width="small", alignment="center"),
+            "Ronde": st.column_config.TextColumn("Ronde", width="small", alignment="center"),
+            "Rang": st.column_config.NumberColumn("Rang Ronde", format="%d", width="small", alignment="center"),
+            "Équipe Repêchant": st.column_config.TextColumn("Équipe qui repêche", width="medium"),
+            "Propriétaire (DG)": st.column_config.TextColumn("DG Responsable", width="medium"),
+            "Choix Original De": st.column_config.TextColumn("Choix d'origine (et pts)", width="medium"),
+            "Statut": st.column_config.TextColumn("Statut du choix", width="medium", alignment="center"),
+        }
 
-                # =========================================================
-                # 1. DÉROULEMENT OFFICIEL DE L'ENCAN (CLASSEMENT INVERSÉ)
-                # =========================================================
-                chrono_rows = []
-                pick_overall = 1
+        styler_c = df_display.style.apply(color_draft_board, axis=1)
+        st.dataframe(styler_c, use_container_width=True, hide_index=True, height=450, column_config=chrono_config)
 
-                for r_idx in range(total_rounds):
-                    r_num = r_idx + 1
-                    for rank_in_round, orig_team_meta in enumerate(draft_base_order, 1):
-                        orig_team = orig_team_meta["team"]
-                        orig_abbr = TEAM_ABBR_MAP.get(orig_team, "")
-                        orig_score = orig_team_meta["total"]
-                        owner_abbr = draft_ownership_map.get((r_num, orig_abbr), orig_abbr)
-                        owner_team = ABBR_TO_TEAM.get(owner_abbr, owner_abbr)
-                        owner_dg = POOLERS.get(owner_team, "N/A")
-                        is_traded = (owner_abbr != orig_abbr)
+        st.divider()
 
-                        statut = f"🔁 Acquis de {orig_abbr}" if is_traded else "✅ Choix d'origine"
+        # Matrice officielle (2027 ou 2028)
+        st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin: 20px 0 10px 0;'>📊 GRILLE MATRICIELLE OFFICIELLE ({onglet_choisi.upper()})</h3>", unsafe_allow_html=True)
 
-                        chrono_rows.append({
-                            "Choix": pick_overall,
-                            "Ronde": f"Ronde {r_num}",
-                            "Rang": rank_in_round,
-                            "Équipe Repêchant": f"{owner_team} ({owner_abbr})",
-                            "Propriétaire (DG)": owner_dg,
-                            "Choix Original De": f"{orig_team} ({orig_score} pts)",
-                            "Statut": statut,
-                            "_owner_abbr": owner_abbr,
-                            "_r_num": r_num
-                        })
-                        pick_overall += 1
+        df_matrix_disp = df_draft_live.reset_index().rename(columns={"index": "Ronde"})
 
-                df_chrono = pd.DataFrame(chrono_rows)
+        def premium_draft_style(val):
+            s = str(val).strip().upper()
+            if s in ["", "NAN", "NONE"]:
+                return "background-color: transparent; color: transparent;"
+            is_highlighted = (e_filtre != "Toutes les équipes" and s == e_filtre)
+            is_faded = (e_filtre != "Toutes les équipes" and s != e_filtre and s in TEAM_ABBR_MAP.values())
 
-                st.markdown("""
-                <div style='background:rgba(15,23,42,0.8); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-bottom:20px;'>
-                    <h3 style='margin:0 0 10px 0; color:#38BDF8; font-weight:900;'>📜 DÉROULEMENT OFFICIEL DU REPÊCHAGE (ORDRE PAR RANG)</h3>
-                    <p style='color:#94A3B8; margin:0 0 15px 0; font-size:0.95rem;'>L'ordre de base commence par l'équipe ayant le <b>moins de points</b> au classement général (#1) et termine par la championne (#11). Tous les choix transigés appartiennent à leur propriétaire actuel.</p>
-                </div>
-                """, unsafe_allow_html=True)
+            if is_highlighted:
+                info = DRAFT_TEAM_STYLES.get(s, {"bg": "#FACC15", "color": "#000000", "border": "#CA8A04"})
+                return f"background-color: {info['bg']}; color: {info['color']}; font-weight: 900; border: 2px solid #FFFFFF; text-align: center; box-shadow: inset 0 0 20px rgba(255,255,255,0.6);"
+            elif is_faded:
+                return "background-color: rgba(15,23,42,0.4); color: rgba(255,255,255,0.15); font-weight: 400; border: 1px solid rgba(255,255,255,0.05); text-align: center;"
+            elif s in DRAFT_TEAM_STYLES:
+                info = DRAFT_TEAM_STYLES[s]
+                return f"background-color: {info['bg']}; color: {info['color']}; font-weight: 800; border: 1px solid {info['border']}; text-align: center;"
 
-                col_sel_ronde, col_info_rep = st.columns([1.5, 2.5], vertical_alignment="center")
-                with col_sel_ronde:
-                    options_rondes = ["Toutes les rondes (1 à 15)"] + [f"Ronde {i}" for i in range(1, total_rounds + 1)]
-                    ronde_selectionnee = st.selectbox("🎯 **SÉLECTIONNER LA RONDE À AFFICHER :**", options_rondes, key="choix_ronde_box")
+            return f"background-color: {t['card_bg']}; color: {t['primary']}; text-align: center; font-weight: 900;"
 
-                df_view = df_chrono.copy()
-                if e_filtre != "Toutes les équipes":
-                    df_view = df_view[df_view["_owner_abbr"] == e_filtre]
-                if ronde_selectionnee != "Toutes les rondes (1 à 15)":
-                    df_view = df_view[df_view["Ronde"] == ronde_selectionnee]
+        styler = df_matrix_disp.style
+        try: styler = styler.map(premium_draft_style)
+        except AttributeError: styler = styler.applymap(premium_draft_style)
 
-                df_display = df_view.drop(columns=["_owner_abbr", "_r_num"]).reset_index(drop=True)
-
-                with col_info_rep:
-                    st.markdown(f"<div style='font-weight:800; color:#F8FAFC; text-align:right;'>Nombre de choix affichés : <span style='color:{t['primary']}; font-size:1.2rem;'>{len(df_display)}</span></div>", unsafe_allow_html=True)
-
-                def color_draft_board(row):
-                    if "🔁" in str(row["Statut"]):
-                        return ['background-color: rgba(30, 58, 138, 0.45); color: #93C5FD; font-weight: 700'] * len(row)
-                    return ['background-color: rgba(15, 23, 42, 0.6); color: #F8FAFC'] * len(row)
-
-                chrono_config = {
-                    "Choix": st.column_config.NumberColumn("Choix #", format="#%d", width="small", alignment="center"),
-                    "Ronde": st.column_config.TextColumn("Ronde", width="small", alignment="center"),
-                    "Rang": st.column_config.NumberColumn("Rang Ronde", format="%d", width="small", alignment="center"),
-                    "Équipe Repêchant": st.column_config.TextColumn("Équipe qui repêche", width="medium"),
-                    "Propriétaire (DG)": st.column_config.TextColumn("DG Responsable", width="medium"),
-                    "Choix Original De": st.column_config.TextColumn("Choix d'origine (et pts)", width="medium"),
-                    "Statut": st.column_config.TextColumn("Statut du choix", width="medium", alignment="center"),
-                }
-
-                styler_c = df_display.style.apply(color_draft_board, axis=1)
-                st.dataframe(styler_c, use_container_width=True, hide_index=True, height=450, column_config=chrono_config)
-
-                st.divider()
-
-                # =========================================================
-                # 2. GRILLE MATRICIELLE DU FICHIER EXCEL
-                # =========================================================
-                st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin: 20px 0 10px 0;'>📊 GRILLE MATRICIELLE DU FICHIER EXCEL ({onglet_choisi.upper()})</h3>", unsafe_allow_html=True)
-
-                def premium_draft_style(val):
-                    s = str(val).strip().upper()
-                    if s in ["", "NAN", "NONE"]:
-                        return "background-color: transparent; color: transparent;"
-                    is_highlighted = (e_filtre != "Toutes les équipes" and s == e_filtre)
-                    is_faded = (e_filtre != "Toutes les équipes" and s != e_filtre and s in TEAM_ABBR_MAP.values())
-
-                    if is_highlighted:
-                        info = DRAFT_TEAM_STYLES.get(s, {"bg": "#FACC15", "color": "#000000", "border": "#CA8A04"})
-                        return f"background-color: {info['bg']}; color: {info['color']}; font-weight: 900; border: 2px solid #FFFFFF; text-align: center; box-shadow: inset 0 0 20px rgba(255,255,255,0.6);"
-                    elif is_faded:
-                        return "background-color: rgba(15,23,42,0.4); color: rgba(255,255,255,0.15); font-weight: 400; border: 1px solid rgba(255,255,255,0.05); text-align: center;"
-                    elif s in DRAFT_TEAM_STYLES:
-                        info = DRAFT_TEAM_STYLES[s]
-                        return f"background-color: {info['bg']}; color: {info['color']}; font-weight: 800; border: 1px solid {info['border']}; text-align: center;"
-
-                    return f"background-color: {t['card_bg']}; color: {t['primary']}; text-align: center; font-weight: 900;"
-
-                styler = df_draft_excel.style
-                try: styler = styler.map(premium_draft_style)
-                except AttributeError: styler = styler.applymap(premium_draft_style)
-
-                cols_config = {col: st.column_config.TextColumn(col, alignment="center") for col in df_draft_excel.columns}
-                st.dataframe(styler, use_container_width=True, hide_index=True, height=580, column_config=cols_config)
-
-        except PermissionError:
-            st.error("⚠️ Le fichier Excel est actuellement ouvert ! Fermez Microsoft Excel puis rafraîchissez la page.")
-        except Exception as e:
-            st.error(f"⚠️ Erreur lors de la lecture de l'onglet dans Excel : {e}")
-
-    if not excel_draft_found:
-        st.warning("⚠️ Aucun onglet de repêchage trouvé dans `gestion_phdm.xlsx`.")
+        cols_config = {col: st.column_config.TextColumn(col, alignment="center") for col in df_matrix_disp.columns}
+        st.dataframe(styler, use_container_width=True, hide_index=True, height=580, column_config=cols_config)
+    else:
+        st.warning("⚠️ Aucune grille de repêchage 2027 ou 2028 initialisée.")
 
 # =========================================================
 # ONGLET 5 : BANQUE DES RECRUES (32 ÉQUIPES LNH + PHDM)
@@ -1503,7 +1807,19 @@ with tab_recrues:
         vrais_lnh = sorted(vrais_lnh, key=sort_teams_key)
         filtre = st.selectbox("🔎 SÉLECTIONNER UNE ÉQUIPE DE LA LNH :", ["Toutes les recrues"] + vrais_lnh)
 
-        CONF_REC = {"No": st.column_config.NumberColumn("No", width="small", alignment="center"), "Joueurs": st.column_config.TextColumn("Nom du Joueur", width="medium"), "Pos": st.column_config.TextColumn("Pos", width="small", alignment="center"), "Année": st.column_config.TextColumn("Année", width="small", alignment="center"), "Ronde": st.column_config.TextColumn("Ronde", width="small", alignment="center"), "Rang": st.column_config.TextColumn("Rang", width="small", alignment="center"), "Cotes": st.column_config.TextColumn("Cotes Experts", width="small", alignment="center"), "Club Junior": st.column_config.TextColumn("Club Junior", width="medium"), "Ligue": st.column_config.TextColumn("Ligue", width="small", alignment="center"), "Équipe LNH (Réelle)": None, "Équipe PHDM": st.column_config.TextColumn("Appartient à (PHDM)", width="medium", alignment="center")}
+        CONF_REC = {
+            "No": st.column_config.NumberColumn("No", width="small", alignment="center"),
+            "Joueurs": st.column_config.TextColumn("Nom du Joueur", width="medium"),
+            "Pos": st.column_config.TextColumn("Pos", width="small", alignment="center"),
+            "Année": st.column_config.TextColumn("Année", width="small", alignment="center"),
+            "Ronde": st.column_config.TextColumn("Ronde", width="small", alignment="center"),
+            "Rang": st.column_config.TextColumn("Rang", width="small", alignment="center"),
+            "Cotes": st.column_config.TextColumn("Cotes Experts", width="small", alignment="center"),
+            "Club Junior": st.column_config.TextColumn("Club Junior", width="medium"),
+            "Ligue": st.column_config.TextColumn("Ligue", width="small", alignment="center"),
+            "Équipe LNH (Réelle)": None,
+            "Équipe PHDM": st.column_config.TextColumn("Appartient à (PHDM)", width="medium", alignment="center")
+        }
 
         if filtre != "Toutes les recrues":
             df_show = df_show[df_show["Équipe LNH (Réelle)"] == filtre]
