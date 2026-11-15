@@ -36,7 +36,7 @@ MOIS_FR = {
     7: "juil", 8: "août", 9: "sept", 10: "oct", 11: "nov", 12: "déc"
 }
 
-# Cohortes actives pour le repêchage (2026 étant passé, on gère 2027 et 2028)
+# Cohortes actives pour le repêchage (2027 et 2028)
 DRAFT_YEARS = ["2027", "2028"]
 
 def format_date_fr(val):
@@ -499,7 +499,6 @@ def init_recrues_from_csv():
     return True
 
 def init_drafts_from_excel():
-    """Charge l'état initial des choix de repêchage futurs (2027, 2028) depuis gestion_phdm.xlsx."""
     abbrs = list(TEAM_ABBR_MAP.values())
     for annee in DRAFT_YEARS:
         st.session_state[f"df_draft_{annee}"] = pd.DataFrame(
@@ -637,7 +636,7 @@ def enforce_roster_limits(slug):
             st.session_state[f"{slug}_df_banc_{pos}"] = df_b
 
 # =========================================================
-# 4B. MOTEUR D'ÉCHANGES DIRECTS (PHDM)
+# 4B. MOTEUR D'ÉCHANGES DIRECTS (RÈGLES STRICTES DE PLANCHER)
 # =========================================================
 def get_team_trade_assets(team_name):
     slug = SLUG_MAP[team_name]
@@ -703,15 +702,12 @@ def clone_team_rosters(slug):
         res[r] = df_cur.copy()
     return res
 
-def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_starters=True):
+def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
     slug_a, slug_b = SLUG_MAP[team_a], SLUG_MAP[team_b]
     abbr_a, abbr_b = TEAM_ABBR_MAP[team_a], TEAM_ABBR_MAP[team_b]
 
     ros_a = clone_team_rosters(slug_a)
     ros_b = clone_team_rosters(slug_b)
-
-    before_part_a = {pos: len(ros_a[pos]) for pos in ["att", "def", "gard"]}
-    before_part_b = {pos: len(ros_b[pos]) for pos in ["att", "def", "gard"]}
 
     def extract_players(ros_src, assets):
         extracted = []
@@ -728,6 +724,9 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_sta
     moved_from_a = extract_players(ros_a, out_a)
     moved_from_b = extract_players(ros_b, out_b)
 
+    # 1. Injection des joueurs transigés :
+    # Si le joueur cédé était partant, il s'ajoute directement aux partants de sa nouvelle équipe !
+    # Si c'était un joueur de banc, il va au banc.
     def inject_players(ros_dest, dest_team_name, incoming_list):
         notes = []
         for asset, row_df in incoming_list:
@@ -739,53 +738,36 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_sta
                 ros_dest["recrues"] = pd.concat([ros_dest["recrues"], row_df], ignore_index=True)
                 notes.append(f"🌱 {asset['name']} ajouté aux recrues de {TEAM_ABBR_MAP[dest_team_name]}.")
             else:
-                banc_key = f"banc_{pos_g}"
-                ros_dest[banc_key] = pd.concat([ros_dest[banc_key], row_df], ignore_index=True)
-                ros_dest[banc_key] = ros_dest[banc_key].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                notes.append(f"📋 {asset['name']} arrive sur le banc ({ROSTER_RULES[pos_g]['label']}) de {TEAM_ABBR_MAP[dest_team_name]}.")
+                if asset["is_partant"]:
+                    target_key = pos_g
+                    notes.append(f"⚡ {asset['name']} s'ajoute aux PARTANTS ({ROSTER_RULES[pos_g]['label']}) de {TEAM_ABBR_MAP[dest_team_name]}.")
+                else:
+                    target_key = f"banc_{pos_g}"
+                    notes.append(f"📋 {asset['name']} arrive sur le banc ({ROSTER_RULES[pos_g]['label']}) de {TEAM_ABBR_MAP[dest_team_name]}.")
+                
+                ros_dest[target_key] = pd.concat([ros_dest[target_key], row_df], ignore_index=True)
+                ros_dest[target_key] = ros_dest[target_key].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
         return notes
 
     notes_a = inject_players(ros_b, team_b, moved_from_a)
     notes_b = inject_players(ros_a, team_a, moved_from_b)
     all_notes = notes_a + notes_b
 
-    def rebalance_starters(ros, before_counts, team_abbr):
-        auto_promos = []
-        for pos, rules in ROSTER_RULES.items():
-            df_p = ros[pos]
-            df_b = ros[f"banc_{pos}"]
-            if not df_p.empty:
-                df_p = df_p.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-            if not df_b.empty:
-                df_b = df_b.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+    # Réinitialisation des index 'No'
+    for r_k in ["att", "banc_att", "def", "banc_def", "gard", "banc_gard"]:
+        if not ros_a[r_k].empty: ros_a[r_k]["No"] = range(1, len(ros_a[r_k]) + 1)
+        if not ros_b[r_k].empty: ros_b[r_k]["No"] = range(1, len(ros_b[r_k]) + 1)
+    if not ros_a["recrues"].empty:
+        ros_a["recrues"] = ros_a["recrues"].sort_values(by="Joueurs").reset_index(drop=True)
+        ros_a["recrues"]["No"] = range(1, len(ros_a["recrues"]) + 1)
+    if not ros_b["recrues"].empty:
+        ros_b["recrues"] = ros_b["recrues"].sort_values(by="Joueurs").reset_index(drop=True)
+        ros_b["recrues"]["No"] = range(1, len(ros_b["recrues"]) + 1)
 
-            cur_p = len(df_p)
-            target_p = before_counts[pos] if auto_fill_starters else max(cur_p, rules["min"])
-            target_p = max(rules["min"], min(rules["max"], target_p))
-
-            needed = max(0, target_p - cur_p)
-            if needed > 0 and not df_b.empty:
-                to_promote = min(needed, len(df_b))
-                promoted_rows = df_b.iloc[:to_promote].copy()
-                df_b = df_b.iloc[to_promote:].reset_index(drop=True)
-                df_p = pd.concat([df_p, promoted_rows], ignore_index=True).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                for p_nom in promoted_rows["Joueurs"].tolist():
-                    auto_promos.append(f"⬆️ {team_abbr} : {p_nom} monte partant ({rules['label']}) pour combler un départ.")
-
-            if not df_p.empty: df_p["No"] = range(1, len(df_p) + 1)
-            if not df_b.empty: df_b["No"] = range(1, len(df_b) + 1)
-            ros[pos] = df_p
-            ros[f"banc_{pos}"] = df_b
-        if not ros["recrues"].empty:
-            ros["recrues"] = ros["recrues"].sort_values(by="Joueurs").reset_index(drop=True)
-            ros["recrues"]["No"] = range(1, len(ros["recrues"]) + 1)
-        return auto_promos
-
-    promos_a = rebalance_starters(ros_a, before_part_a, abbr_a)
-    promos_b = rebalance_starters(ros_b, before_part_b, abbr_b)
-    auto_promos = promos_a + promos_b
-
-    def check_quotas(ros, t_name):
+    # 2. Vérification stricte des quotas et du plancher minimum
+    # AUCUN remplacement automatique depuis le banc si on est sous le minimum :
+    # Si on descend sous le plancher (ex. 1 gardien au lieu de 2), la transaction est BLOQUÉE.
+    def check_quotas_and_limits(ros, t_name):
         errors = []
         warnings = []
         stats = {}
@@ -796,19 +778,31 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_sta
             n_tot = n_p + n_b
             tot_conc += n_tot
             stats[pos] = (n_p, n_tot)
+
             if n_p < rules["min"]:
-                errors.append(f"❌ {t_name} ({rules['label']}) : {n_p} partants (minimum requis : {rules['min']}). Pas assez de joueurs sur le banc!")
-            if n_p > rules["max"]:
-                errors.append(f"❌ {t_name} ({rules['label']}) : {n_p} partants (maximum : {rules['max']}).")
+                needed = rules["min"] - n_p
+                errors.append(
+                    f"❌ TRANSACTION BLOQUÉE : {t_name} n'aurait plus que {n_p} {rules['label'].lower()} partant(s) "
+                    f"(minimum légal strict : {rules['min']}). L'équipe doit obligatoirement recevoir au moins {needed} "
+                    f"{rules['label'].lower()} partant(s) dans la transaction pour combler le départ !"
+                )
+            elif n_p > rules["max"]:
+                surplus = n_p - rules["max"]
+                errors.append(
+                    f"❌ TRANSACTION BLOQUÉE : {t_name} aurait {n_p} {rules['label'].lower()} partants "
+                    f"(maximum légal : {rules['max']}). Excédent de {surplus} partant(s) !"
+                )
+
             if n_tot > rules["max_tot"]:
-                warnings.append(f"⚠️ {t_name} ({rules['label']}) : {n_tot} joueurs au total (max : {rules['max_tot']}).")
+                warnings.append(f"⚠️ {t_name} ({rules['label']}) : {n_tot} joueurs au total (max permis : {rules['max_tot']}).")
+        
         stats["total"] = tot_conc
         if tot_conc > 128:
-            warnings.append(f"⚠️ {t_name} : {tot_conc} joueurs dans la concession (max : 128).")
+            warnings.append(f"⚠️ {t_name} : {tot_conc} joueurs dans la concession (max permis : 128).")
         return errors, warnings, stats
 
-    err_a, warn_a, stats_a = check_quotas(ros_a, team_a)
-    err_b, warn_b, stats_b = check_quotas(ros_b, team_b)
+    err_a, warn_a, stats_a = check_quotas_and_limits(ros_a, team_a)
+    err_b, warn_b, stats_b = check_quotas_and_limits(ros_b, team_b)
 
     drafts_sim = {}
     for yr in DRAFT_YEARS:
@@ -826,7 +820,6 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, auto_fill_sta
         "ros_a": ros_a, "ros_b": ros_b,
         "drafts_sim": drafts_sim,
         "notes": all_notes,
-        "auto_promos": auto_promos,
         "errors": err_a + err_b,
         "warnings": warn_a + warn_b,
         "stats_a": stats_a, "stats_b": stats_b
@@ -882,8 +875,7 @@ def execute_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, sim_result):
         "Équipe A": team_a,
         "A cédé": ", ".join(a_items) if a_items else "Rien",
         "Équipe B": team_b,
-        "B a cédé": ", ".join(b_items) if b_items else "Rien",
-        "Ajustements auto": " | ".join(sim_result["auto_promos"]) if sim_result["auto_promos"] else "Aucun"
+        "B a cédé": ", ".join(b_items) if b_items else "Rien"
     })
 
     save_state()
@@ -907,7 +899,7 @@ def undo_last_trade():
     return True
 
 # =========================================================
-# CHARGEMENT INITIAL
+# INITIALISATION DES DONNÉES
 # =========================================================
 data_loaded = load_state()
 if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_state or st.session_state[f"{SLUG_MAP['Dallas Stars']}_df_att"].empty):
@@ -926,7 +918,7 @@ for yr in DRAFT_YEARS:
 for slug in SLUG_MAP.values(): enforce_roster_limits(slug)
 
 # =========================================================
-# 5. INITIALISATION DU THÈME DYNAMIQUE DE L'ÉQUIPE (DARK MODE)
+# 5. INITIALISATION DU THÈME DYNAMIQUE DE L'ÉQUIPE
 # =========================================================
 team_totals = []
 for t_name in POOLERS.keys():
@@ -1363,7 +1355,7 @@ with tab_equipes:
 with tab_transactions:
     st.markdown(f"<h1 style='color:{t['primary']};'>🔄 CENTRE OFFICIEL DES TRANSACTIONS</h1>", unsafe_allow_html=True)
 
-    # --- BLOC 1 : CONSOLE D'ÉCHANGE DIRECT (COMMISSAIRE UNIQUEMENT) ---
+    # --- BLOC 1 : CONSOLE D'ÉCHANGE DIRECT ---
     if is_admin:
         with st.expander("🔁 EFFECTUER UN NOUVEL ÉCHANGE DIRECT (JOUEURS, RECRUES & CHOIX 2027-2028)", expanded=True):
             team_list = list(POOLERS.keys())
@@ -1409,56 +1401,54 @@ with tab_transactions:
 
             if has_selection:
                 st.markdown("---")
-                auto_fill = st.checkbox("⚡ Combler automatiquement les postes de partants libérés avec les meilleurs joueurs du banc", value=True)
-                sim = simulate_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b, auto_fill_starters=auto_fill)
+                sim = simulate_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b)
 
-                st.markdown("### 🔍 APERÇU & VÉRIFICATION AVANT CONFIRMATION")
+                st.markdown("### 🔍 APERÇU DE L'IMPACT SUR LES FORMATIONS")
 
                 prev1, prev2 = st.columns(2)
                 with prev1:
                     sa = sim["stats_a"]
                     st.info(
-                        f"**Impact sur {trade_team_a} (Après échange) :**\n\n"
-                        f"• Attaquants : **{sa['att'][0]}** partants / {sa['att'][1]} total\n\n"
-                        f"• Défenseurs : **{sa['def'][0]}** partants / {sa['def'][1]} total\n\n"
-                        f"• Gardiens : **{sa['gard'][0]}** partants / {sa['gard'][1]} total\n\n"
-                        f"• Concession : **{sa['total']} / 128**"
+                        f"**Alignement prévu pour {trade_team_a} :**\n\n"
+                        f"• Attaquants : **{sa['att'][0]}** partants / {sa['att'][1]} au total\n\n"
+                        f"• Défenseurs : **{sa['def'][0]}** partants / {sa['def'][1]} au total\n\n"
+                        f"• Gardiens : **{sa['gard'][0]}** partants / {sa['gard'][1]} au total\n\n"
+                        f"• Total Concession : **{sa['total']} / 128**"
                     )
                 with prev2:
                     sb = sim["stats_b"]
                     st.info(
-                        f"**Impact sur {trade_team_b} (Après échange) :**\n\n"
-                        f"• Attaquants : **{sb['att'][0]}** partants / {sb['att'][1]} total\n\n"
-                        f"• Défenseurs : **{sb['def'][0]}** partants / {sb['def'][1]} total\n\n"
-                        f"• Gardiens : **{sb['gard'][0]}** partants / {sb['gard'][1]} total\n\n"
-                        f"• Concession : **{sb['total']} / 128**"
+                        f"**Alignement prévu pour {trade_team_b} :**\n\n"
+                        f"• Attaquants : **{sb['att'][0]}** partants / {sb['att'][1]} au total\n\n"
+                        f"• Défenseurs : **{sb['def'][0]}** partants / {sb['def'][1]} au total\n\n"
+                        f"• Gardiens : **{sb['gard'][0]}** partants / {sb['gard'][1]} au total\n\n"
+                        f"• Total Concession : **{sb['total']} / 128**"
                     )
 
-                if sim["notes"] or sim["auto_promos"]:
-                    details_txt = "\n".join([f"- {n}" for n in sim["notes"] + sim["auto_promos"]])
-                    st.markdown(f"**Mouvements automatiques prévus :**\n{details_txt}")
+                if sim["notes"]:
+                    details_txt = "\n".join([f"- {n}" for n in sim["notes"]])
+                    st.markdown(f"**Mouvements de personnel enregistrés :**\n{details_txt}")
 
                 for err in sim["errors"]:
                     st.error(err)
                 for wrn in sim["warnings"]:
                     st.warning(wrn)
 
-                force_quota = False
-                if sim["warnings"] and not sim["errors"]:
-                    force_quota = st.checkbox("⚠️ Forcer la transaction malgré le dépassement de quota maximum (Mode Commissaire)")
+                can_execute = (len(sim["errors"]) == 0)
 
-                can_execute = (len(sim["errors"]) == 0) and (len(sim["warnings"]) == 0 or force_quota)
-
-                if st.button("✅ CONFIRMER ET ENREGISTRER LA TRANSACTION", type="primary", use_container_width=True, disabled=not can_execute):
-                    execute_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b, sim)
-                    st.success("🎉 Transaction enregistrée! Alignements, choix de repêchage et banque des recrues mis à jour.")
-                    st.rerun()
+                if can_execute:
+                    if st.button("✅ CONFIRMER ET EXÉCUTER LA TRANSACTION", type="primary", use_container_width=True):
+                        execute_trade(trade_team_a, trade_team_b, out_a, out_b, pk_out_a, pk_out_b, sim)
+                        st.success("🎉 Transaction validée et enregistrée ! Les effectifs ont été mis à jour.")
+                        st.rerun()
+                else:
+                    st.button("🚫 TRANSACTION INTERDITE (QUOTAS NON RESPECTÉS)", disabled=True, use_container_width=True)
     else:
         st.info("ℹ️ **Mode Consultation** : Connectez-vous avec le mot de passe commissaire dans le menu latéral pour enregistrer un échange en direct.")
 
     st.divider()
 
-    # --- BLOC 2 : NOUVELLES TRANSACTIONS ENREGISTRÉES DANS L'APPLICATION ---
+    # --- BLOC 2 : NOUVELLES TRANSACTIONS EFFECTUÉES SUR LA PLATEFORME ---
     st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900;'>🆕 TRANSACTIONS ENREGISTRÉES SUR LA PLATEFORME</h3>", unsafe_allow_html=True)
     app_hist = st.session_state.get("app_trade_history", [])
     if app_hist:
@@ -1466,17 +1456,17 @@ with tab_transactions:
         st.dataframe(df_app_hist, use_container_width=True, hide_index=True)
         csv_bytes = df_app_hist.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
-            label="📥 Télécharger ces transactions (CSV / Excel)",
+            label="📥 Télécharger l'historique des transactions (CSV / Excel)",
             data=csv_bytes,
             file_name=f"transactions_phdm_{datetime.now().strftime('%Y-%m-%d')}.csv",
             mime="text/csv"
         )
     else:
-        st.caption("Aucune nouvelle transaction effectuée directement sur la plateforme depuis le chargement de la base.")
+        st.caption("Aucune nouvelle transaction effectuée sur la plateforme depuis le dernier chargement de la base.")
 
     st.divider()
 
-    # --- BLOC 3 : ARCHIVES HISTORIQUES DU FICHIER EXCEL (LECTURE SEULE) ---
+    # --- BLOC 3 : ARCHIVES HISTORIQUES DU FICHIER EXCEL ---
     st.markdown(f"<h3 style='color:#94A3B8; font-weight:900;'>📜 ARCHIVES HISTORIQUES DES TRANSACTIONS (EXCEL)</h3>", unsafe_allow_html=True)
     path_excel = get_file_path("gestion_phdm.xlsx")
 
@@ -1511,7 +1501,7 @@ with tab_transactions:
         st.info("Fichier `gestion_phdm.xlsx` introuvable.")
 
 # =========================================================
-# ONGLET 3 : RÈGLEMENTS DU POOL (SYNCHRONISÉ AVEC EXCEL)
+# ONGLET 3 : RÈGLEMENTS DU POOL
 # =========================================================
 with tab_reglements:
     st.markdown(f"""
