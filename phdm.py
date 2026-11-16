@@ -5,7 +5,9 @@ import unicodedata
 import json
 import os
 import re
+import base64
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="PHDM - Plateforme Officielle Multi-Équipes",
@@ -347,7 +349,7 @@ def get_nhl_team_branding(team_name):
     return "https://assets.nhle.com/logos/nhl/svg/NHL_light.svg", "#94A3B8"
 
 # =========================================================
-# 4. GESTION DES FICHIERS & ÉTAT PERMANENT
+# 4. GESTION DES FICHIERS & ÉTAT PERMANENT (+ SYNCHRO GITHUB)
 # =========================================================
 DATA_FILE = "phdm_state.json"
 
@@ -454,7 +456,10 @@ def init_recrues_from_csv():
             pos = str(r.iloc[2]).strip() if len(r) > 2 and pd.notna(r.iloc[2]) else ""
             annee = str(r.iloc[3]).strip() if len(r) > 3 and pd.notna(r.iloc[3]) else ""
             ronde = str(r.iloc[4]).strip() if len(r) > 4 and pd.notna(r.iloc[4]) else ""
-            rang = str(r.iloc[5]).strip() if len(r) > 5 and pd.notna(r.iloc[5]) else ""
+            if len(r) > 5 and pd.notna(r.iloc[5]):
+                rang = str(r.iloc[5]).strip()
+            else:
+                rang = ""
 
             c1 = str(r.iloc[6]).strip() if len(r) > 6 and pd.notna(r.iloc[6]) else ""
             c2 = str(r.iloc[7]).strip() if len(r) > 7 and pd.notna(r.iloc[7]) else ""
@@ -563,9 +568,55 @@ def init_drafts_from_excel():
     except Exception:
         return False
 
-def save_state():
+def sync_state_to_github(state_data):
+    """Envoie phdm_state.json sur GitHub si les Secrets Streamlit sont configurés."""
+    try:
+        token = st.secrets.get("GITHUB_TOKEN", "")
+        repo = st.secrets.get("GITHUB_REPO", "")
+        branch = st.secrets.get("GITHUB_BRANCH", "main")
+    except Exception:
+        return False, "Secrets non configurés"
+
+    if not token or not repo:
+        return False, "Token ou Repo manquant"
+
+    api_url = f"https://api.github.com/repos/{repo}/contents/{DATA_FILE}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "PHDM-Streamlit-App"
+    }
+    try:
+        sha = None
+        r_get = requests.get(f"{api_url}?ref={branch}", headers=headers, timeout=10)
+        if r_get.status_code == 200:
+            sha = r_get.json().get("sha")
+
+        content_str = json.dumps(state_data, ensure_ascii=False, indent=4)
+        content_b64 = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
+
+        payload = {
+            "message": "🔄 Sauvegarde automatique PHDM (Streamlit)",
+            "content": content_b64,
+            "branch": branch
+        }
+        if sha:
+            payload["sha"] = sha
+
+        r_put = requests.put(api_url, headers=headers, json=payload, timeout=15)
+        if r_put.status_code in (200, 201):
+            return True, "Sauvegardé sur GitHub"
+        return False, f"Erreur GitHub ({r_put.status_code})"
+    except Exception as e:
+        return False, str(e)
+
+def save_state(official_api_updated=False, push_github=False):
+    if official_api_updated:
+        st.session_state["last_official_update_et"] = datetime.now(ZoneInfo("America/Toronto")).strftime("%Y-%m-%d %H:%M")
+
     state_data = {
         "schema_version": 3,
+        "last_official_update_et": st.session_state.get("last_official_update_et", ""),
         "rosters": {},
         "drafts": {},
         "all_recrues": [],
@@ -584,6 +635,13 @@ def save_state():
         state_data["all_recrues"] = st.session_state["df_all_recrues"].to_dict(orient="records")
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(state_data, f, ensure_ascii=False, indent=4)
+
+    if push_github:
+        ok, msg = sync_state_to_github(state_data)
+        if ok:
+            st.toast("☁️ Sauvegardé automatiquement sur GitHub !")
+        elif msg not in ("Secrets non configurés", "Token ou Repo manquant"):
+            st.toast(f"⚠️ GitHub : {msg}")
 
 def load_state():
     if not os.path.exists(DATA_FILE): return False
@@ -617,6 +675,7 @@ def load_state():
 
         st.session_state["app_trade_history"] = state_data.get("app_trade_history", [])
         st.session_state["last_trade_backup"] = state_data.get("last_trade_backup", None)
+        st.session_state["last_official_update_et"] = state_data.get("last_official_update_et", "")
         return True
     except Exception:
         return False
@@ -724,9 +783,6 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
     moved_from_a = extract_players(ros_a, out_a)
     moved_from_b = extract_players(ros_b, out_b)
 
-    # 1. Injection des joueurs transigés :
-    # Si le joueur cédé était partant, il s'ajoute directement aux partants de sa nouvelle équipe !
-    # Si c'était un joueur de banc, il va au banc.
     def inject_players(ros_dest, dest_team_name, incoming_list):
         notes = []
         for asset, row_df in incoming_list:
@@ -744,7 +800,7 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
                 else:
                     target_key = f"banc_{pos_g}"
                     notes.append(f"📋 {asset['name']} arrive sur le banc ({ROSTER_RULES[pos_g]['label']}) de {TEAM_ABBR_MAP[dest_team_name]}.")
-                
+
                 ros_dest[target_key] = pd.concat([ros_dest[target_key], row_df], ignore_index=True)
                 ros_dest[target_key] = ros_dest[target_key].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
         return notes
@@ -753,7 +809,6 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
     notes_b = inject_players(ros_a, team_a, moved_from_b)
     all_notes = notes_a + notes_b
 
-    # Réinitialisation des index 'No'
     for r_k in ["att", "banc_att", "def", "banc_def", "gard", "banc_gard"]:
         if not ros_a[r_k].empty: ros_a[r_k]["No"] = range(1, len(ros_a[r_k]) + 1)
         if not ros_b[r_k].empty: ros_b[r_k]["No"] = range(1, len(ros_b[r_k]) + 1)
@@ -764,9 +819,6 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
         ros_b["recrues"] = ros_b["recrues"].sort_values(by="Joueurs").reset_index(drop=True)
         ros_b["recrues"]["No"] = range(1, len(ros_b["recrues"]) + 1)
 
-    # 2. Vérification stricte des quotas et du plancher minimum
-    # AUCUN remplacement automatique depuis le banc si on est sous le minimum :
-    # Si on descend sous le plancher (ex. 1 gardien au lieu de 2), la transaction est BLOQUÉE.
     def check_quotas_and_limits(ros, t_name):
         errors = []
         warnings = []
@@ -795,7 +847,7 @@ def simulate_trade(team_a, team_b, out_a, out_b, picks_a, picks_b):
 
             if n_tot > rules["max_tot"]:
                 warnings.append(f"⚠️ {t_name} ({rules['label']}) : {n_tot} joueurs au total (max permis : {rules['max_tot']}).")
-        
+
         stats["total"] = tot_conc
         if tot_conc > 128:
             warnings.append(f"⚠️ {t_name} : {tot_conc} joueurs dans la concession (max permis : 128).")
@@ -878,7 +930,7 @@ def execute_trade(team_a, team_b, out_a, out_b, picks_a, picks_b, sim_result):
         "B a cédé": ", ".join(b_items) if b_items else "Rien"
     })
 
-    save_state()
+    save_state(push_github=True)
 
 def undo_last_trade():
     backup = st.session_state.get("last_trade_backup")
@@ -895,7 +947,7 @@ def undo_last_trade():
         st.session_state["df_all_recrues"] = pd.DataFrame(backup["all_recrues"])
     st.session_state["app_trade_history"] = backup.get("app_trade_history", [])
     st.session_state["last_trade_backup"] = None
-    save_state()
+    save_state(push_github=True)
     return True
 
 # =========================================================
@@ -908,7 +960,7 @@ if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_st
     init_drafts_from_excel()
     if "app_trade_history" not in st.session_state:
         st.session_state["app_trade_history"] = []
-    save_state()
+    save_state(official_api_updated=True)
 
 if "df_all_recrues" not in st.session_state: init_recrues_from_csv()
 for yr in DRAFT_YEARS:
@@ -1050,12 +1102,12 @@ def build_ranking_html(rank_list, score_key, top_n=12):
         else: html += f"<span style='color:#CBD5E1;'>{i+1}. {team} : {pts} pts</span><br>"
     return html
 
-tab_equipes, tab_transactions, tab_reglements, tab_repechage, tab_recrues = st.tabs([
-    "🏒 ALIGNEMENTS & ÉQUIPES", "🔁 CENTRE DES TRANSACTIONS", "📜 RÈGLEMENTS DU POOL", "🎟️ CHOIX DE REPÊCHAGE", "🌱 BANQUE DES RECRUES"
+tab_equipes, tab_transactions, tab_reglements, tab_repechage, tab_recrues, tab_direct = st.tabs([
+    "🏒 ALIGNEMENTS & ÉQUIPES", "🔁 CENTRE DES TRANSACTIONS", "📜 RÈGLEMENTS DU POOL", "🎟️ CHOIX DE REPÊCHAGE", "🌱 BANQUE DES RECRUES", "🔴 DIRECT (NON OFFICIEL)"
 ])
 
 # =========================================================
-# ONGLET 1 : ÉQUIPES & PRIX
+# ONGLET 1 : ÉQUIPES & PRIX (INCHANGÉ VISUELLEMENT)
 # =========================================================
 with tab_equipes:
     top_gauche, top_droite = st.columns([1.1, 1.9], vertical_alignment="top")
@@ -1221,6 +1273,9 @@ with tab_equipes:
         if is_admin:
             if st.button("🔄 ACTUALISER API", use_container_width=True):
                 st.cache_data.clear()
+                nhl_skaters_new, nhl_goalies_new, _ = fetch_nhl_stats()
+                globals()["nhl_skaters"] = nhl_skaters_new
+                globals()["nhl_goalies"] = nhl_goalies_new
                 for slg in SLUG_MAP.values():
                     for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
                         if f"{slg}_df_{role}" in st.session_state:
@@ -1230,7 +1285,7 @@ with tab_equipes:
                                 cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
                             st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                 for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state()
+                save_state(official_api_updated=True, push_github=True)
                 st.rerun()
         else:
             st.button("🔄 ACTUALISER API", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
@@ -1244,7 +1299,7 @@ with tab_equipes:
                 st.session_state["app_trade_history"] = []
                 st.session_state["last_trade_backup"] = None
                 for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state()
+                save_state(official_api_updated=True, push_github=True)
                 st.success("✅ Base de données rechargée avec succès !")
                 st.rerun()
         else:
@@ -1260,7 +1315,7 @@ with tab_equipes:
                         st.session_state[ka] = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         st.session_state[kb] = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         st.session_state[ka]["No"], st.session_state[kb]["No"] = range(1, len(st.session_state[ka])+1), range(1, len(st.session_state[kb])+1)
-                save_state()
+                save_state(push_github=True)
                 st.rerun()
         else:
             st.button("⚡ **APPLIQUER LES PERMUTATIONS (1 POUR 1)**", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
@@ -1294,14 +1349,14 @@ with tab_equipes:
                         new_p = pd.concat([df_p[df_p["Joueurs"] != "[Carreau Libre]"], row_b]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
                         st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
+                        save_state(push_github=True); st.rerun()
                     elif b_sel.startswith("[Laisser") and not p_sel.startswith("[Combler"):
                         row_p = df_p[df_p["Joueurs"] == p_sel].copy()
                         new_p = df_p[df_p["Joueurs"] != p_sel].sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         new_b = pd.concat([df_b, row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
                         st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
+                        save_state(push_github=True); st.rerun()
                     elif not p_sel.startswith("[Combler") and not b_sel.startswith("[Laisser"):
                         row_p = df_p[df_p["Joueurs"] == p_sel].copy()
                         row_b = df_b[df_b["Joueurs"] == b_sel].copy()
@@ -1309,7 +1364,7 @@ with tab_equipes:
                         new_b = pd.concat([df_b[df_b["Joueurs"] != b_sel], row_p]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                         new_p["No"], new_b["No"] = range(1, len(new_p) + 1), range(1, len(new_b) + 1)
                         st.session_state[k_p], st.session_state[k_b] = new_p, new_b
-                        save_state(); st.rerun()
+                        save_state(push_github=True); st.rerun()
     else:
         st.info("ℹ️ **Mode Consultation (Lecture seule)** : L'alignement et les permutations sont réservés au commissaire.")
 
@@ -1355,7 +1410,6 @@ with tab_equipes:
 with tab_transactions:
     st.markdown(f"<h1 style='color:{t['primary']};'>🔄 CENTRE OFFICIEL DES TRANSACTIONS</h1>", unsafe_allow_html=True)
 
-    # --- BLOC 1 : CONSOLE D'ÉCHANGE DIRECT ---
     if is_admin:
         with st.expander("🔁 EFFECTUER UN NOUVEL ÉCHANGE DIRECT (JOUEURS, RECRUES & CHOIX 2027-2028)", expanded=True):
             team_list = list(POOLERS.keys())
@@ -1448,7 +1502,6 @@ with tab_transactions:
 
     st.divider()
 
-    # --- BLOC 2 : NOUVELLES TRANSACTIONS EFFECTUÉES SUR LA PLATEFORME ---
     st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900;'>🆕 TRANSACTIONS ENREGISTRÉES SUR LA PLATEFORME</h3>", unsafe_allow_html=True)
     app_hist = st.session_state.get("app_trade_history", [])
     if app_hist:
@@ -1466,7 +1519,6 @@ with tab_transactions:
 
     st.divider()
 
-    # --- BLOC 3 : ARCHIVES HISTORIQUES DU FICHIER EXCEL ---
     st.markdown(f"<h3 style='color:#94A3B8; font-weight:900;'>📜 ARCHIVES HISTORIQUES DES TRANSACTIONS (EXCEL)</h3>", unsafe_allow_html=True)
     path_excel = get_file_path("gestion_phdm.xlsx")
 
@@ -1747,7 +1799,6 @@ with tab_repechage:
 
         st.divider()
 
-        # Matrice officielle (2027 ou 2028)
         st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin: 20px 0 10px 0;'>📊 GRILLE MATRICIELLE OFFICIELLE ({onglet_choisi.upper()})</h3>", unsafe_allow_html=True)
 
         df_matrix_disp = df_draft_live.reset_index().rename(columns={"index": "Ronde"})
@@ -1814,7 +1865,7 @@ with tab_recrues:
         if filtre != "Toutes les recrues":
             df_show = df_show[df_show["Équipe LNH (Réelle)"] == filtre]
             logo, color = get_nhl_team_branding(filtre)
-            st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(30,41,59,0.7);backdrop-filter:blur(10px);padding:12px;border-left:8px solid {color};border-radius:12px;margin:10px 0 15px;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><img src="{logo}" width="55" style="margin-right: 20px; filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));"><div><h3 style="margin: 0; color: #F8FAFC; text-transform: uppercase; font-weight:900;">{filtre}</h3><div style="color: {t['primary']}; font-weight:700; font-size: 0.9rem; letter-spacing:1px;">ESPOIRS REPÊCHÉS ({len(df_show)} JOUEURS)</div></div></div>''', unsafe_allow_html=True)
+            st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(30,41,59,0.7);backdrop-filter(blur(10px));padding:12px;border-left:8px solid {color};border-radius:12px;margin:10px 0 15px;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><img src="{logo}" width="55" style="margin-right: 20px; filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));"><div><h3 style="margin: 0; color: #F8FAFC; text-transform: uppercase; font-weight:900;">{filtre}</h3><div style="color: {t['primary']}; font-weight:700; font-size: 0.9rem; letter-spacing:1px;">ESPOIRS REPÊCHÉS ({len(df_show)} JOUEURS)</div></div></div>''', unsafe_allow_html=True)
             st.dataframe(df_show.style.apply(lambda r: ['background-color: transparent; color: #F8FAFC'] * len(r), axis=1), hide_index=True, use_container_width=True, height=650, column_config=CONF_REC)
         else:
             st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900;'>TOUTES LES RECRUES ({len(df_show)} joueurs)</h3>", unsafe_allow_html=True)
@@ -1824,3 +1875,341 @@ with tab_recrues:
                 logo, color = get_nhl_team_branding(eq)
                 st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(15,23,42,0.6);padding:10px 15px;border-left:6px solid {color};border-radius:8px;margin:30px 0 10px;box-shadow:0 2px 10px rgba(0,0,0,0.2);"><img src="{logo}" width="40" style="margin-right: 15px; filter: drop-shadow(0px 0px 3px rgba(255,255,255,0.1));"><h4 style="margin: 0; color: #F8FAFC; font-weight:800; text-transform: uppercase; letter-spacing:1px;">{eq} <span style="color:{t['primary']}; font-size:0.9rem;">({len(df_eq)})</span></h4></div>''', unsafe_allow_html=True)
                 st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC)
+
+# =========================================================
+# ONGLET 6 : DIRECT DE LA JOURNÉE (STATISTIQUES NON OFFICIELLES)
+# =========================================================
+def _nhl_txt(val):
+    if isinstance(val, dict):
+        return str(val.get("default", ""))
+    return str(val or "")
+
+@st.cache_data(ttl=45)
+def fetch_live_scoreboard_direct():
+    try:
+        r = requests.get("https://api-web.nhle.com/v1/score/now", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+@st.cache_data(ttl=120)
+def fetch_game_boxscore_direct(game_id):
+    try:
+        r = requests.get(f"https://api-web.nhle.com/v1/gamecenter/{game_id}/boxscore", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+@st.cache_data(ttl=120)
+def fetch_player_landing_direct(player_id):
+    try:
+        r = requests.get(f"https://api-web.nhle.com/v1/player/{player_id}/landing", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {}
+
+def _build_name_variants(nom_excel):
+    nc = clean_str(nom_excel)
+    variants = set()
+    if not nc or nc == "carreau libre":
+        return variants
+    variants.add(nc)
+    if nc in ALIASES:
+        variants.add(ALIASES[nc])
+    parts = nc.split()
+    if len(parts) >= 2:
+        variants.add(f"{' '.join(parts[1:])} {parts[0]}")
+        variants.add(f"{parts[-1]} {' '.join(parts[:-1])}")
+        for v in list(variants):
+            if v in ALIASES:
+                variants.add(ALIASES[v])
+    return variants
+
+@st.fragment(run_every=60)
+def render_tab_direct():
+    st.markdown("""
+    <div style='background: rgba(180, 83, 9, 0.28); border: 2px solid #F59E0B; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; text-align: center;'>
+        <div style='font-size: 1.1rem; font-weight: 900; color: #FCD34D; letter-spacing: 0.5px;'>
+            ⚠️ STATISTIQUES NON OFFICIELLES — DIRECT DE LA JOURNÉE
+        </div>
+        <div style='font-size: 0.9rem; color: #FDE68A; margin-top: 4px;'>
+            Points calculés en direct pendant les matchs (sujets à révision par la LNH). L'onglet <b>Alignements & Équipes</b> conserve les vrais comptes officiels mis à jour la nuit après les matchs.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    heure_qc = datetime.now(ZoneInfo("America/Toronto")).strftime("%H:%M:%S")
+    last_maj = st.session_state.get("last_official_update_et", "")
+    st.caption(f"🔄 Actualisation automatique toutes les 60 secondes (dernière lecture : {heure_qc} HE) • Dernière mise à jour officielle (Point du club) : {last_maj or 'Non enregistrée'}")
+
+    score_data = fetch_live_scoreboard_direct()
+    games = score_data.get("games", [])
+    current_nhl_date = score_data.get("currentDate", "")
+
+    if games:
+        cols_g = st.columns(min(6, len(games)))
+        for idx_g, g in enumerate(games):
+            away = g.get("awayTeam", {})
+            home = g.get("homeTeam", {})
+            state = g.get("gameState", "")
+            clock = g.get("clock", {}).get("timeRemaining", "")
+            p_num = g.get("periodDescriptor", {}).get("number", "")
+            if state in ("LIVE", "CRIT"):
+                badge = f"🔴 P{p_num} {clock}"
+            elif state in ("FINAL", "OFF"):
+                lp = g.get("gameOutcome", {}).get("lastPeriodType", "")
+                badge = f"✅ Final{' (' + lp + ')' if lp in ('OT', 'SO') else ''}"
+            else:
+                badge = "🕒 À venir"
+            with cols_g[idx_g % len(cols_g)]:
+                st.markdown(f"""
+                <div style='background:rgba(15,23,42,0.75); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:7px; margin-bottom:8px; text-align:center;'>
+                    <div style='font-size:0.72rem; color:#94A3B8; font-weight:800;'>{badge}</div>
+                    <div style='font-size:0.92rem; font-weight:900; color:#F8FAFC;'>{_nhl_txt(away.get('abbrev'))} {away.get('score', 0)} - {home.get('score', 0)} {_nhl_txt(home.get('abbrev'))}</div>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("Aucun match LNH au calendrier pour cette journée.")
+
+    skater_by_name_team = {}
+    skater_by_name = {}
+    goalie_day_pts = {}
+    all_games_final = bool(games)
+
+    for g in games:
+        state = g.get("gameState", "")
+        if state not in ("FINAL", "OFF"):
+            all_games_final = False
+
+        away = g.get("awayTeam", {})
+        home = g.get("homeTeam", {})
+
+        for goal in g.get("goals", []):
+            g_team = _nhl_txt(goal.get("teamAbbrev")).upper()
+            b_full = clean_str(f"{_nhl_txt(goal.get('firstName'))} {_nhl_txt(goal.get('lastName'))}")
+            if b_full:
+                skater_by_name.setdefault(b_full, {"but": 0, "assiste": 0})
+                skater_by_name[b_full]["but"] += 1
+                if g_team:
+                    skater_by_name_team.setdefault((b_full, g_team), {"but": 0, "assiste": 0})
+                    skater_by_name_team[(b_full, g_team)]["but"] += 1
+            for ast in goal.get("assists", []):
+                a_full = clean_str(f"{_nhl_txt(ast.get('firstName'))} {_nhl_txt(ast.get('lastName'))}")
+                if a_full:
+                    skater_by_name.setdefault(a_full, {"but": 0, "assiste": 0})
+                    skater_by_name[a_full]["assiste"] += 1
+                    if g_team:
+                        skater_by_name_team.setdefault((a_full, g_team), {"but": 0, "assiste": 0})
+                        skater_by_name_team[(a_full, g_team)]["assiste"] += 1
+
+        if state in ("FINAL", "OFF"):
+            box = fetch_game_boxscore_direct(g.get("id"))
+            pbg = box.get("playerByGameStats", {})
+            away_sc = away.get("score", 0)
+            home_sc = home.get("score", 0)
+            last_period = g.get("gameOutcome", {}).get("lastPeriodType", "REG")
+            win_gid = g.get("winningGoalie", {}).get("playerId")
+
+            for side_key, opp_score, won_game in [("awayTeam", home_sc, away_sc > home_sc), ("homeTeam", away_sc, home_sc > away_sc)]:
+                g_list = pbg.get(side_key, {}).get("goalies", [])
+                played_goalies = [gl for gl in g_list if gl.get("toi", "00:00") not in ("00:00", "0:00", "")]
+                for gl in played_goalies:
+                    pid = gl.get("playerId")
+                    if not pid:
+                        continue
+                    landing = fetch_player_landing_direct(pid)
+                    fn = _nhl_txt(landing.get("firstName"))
+                    ln = _nhl_txt(landing.get("lastName"))
+                    g_clean = clean_str(f"{fn} {ln}")
+                    if not g_clean:
+                        continue
+
+                    pts_g = 0
+                    decision = ""
+                    for gm in landing.get("last5Games", []):
+                        if gm.get("gameId") == g.get("id"):
+                            decision = str(gm.get("decision", "")).upper()
+                            break
+
+                    if decision == "W" or (not decision and win_gid == pid):
+                        pts_g += 2
+                    elif decision in ("O", "OT", "OTL") or (not decision and not won_game and last_period in ("OT", "SO") and gl == played_goalies[-1]):
+                        pts_g += 1
+
+                    if won_game and opp_score == 0 and len(played_goalies) == 1:
+                        pts_g += 1
+
+                    if pts_g > 0:
+                        goalie_day_pts[g_clean] = goalie_day_pts.get(g_clean, 0) + pts_g
+
+    already_in_official = False
+    if last_maj and current_nhl_date and all_games_final:
+        maj_date = last_maj.split(" ")[0]
+        if maj_date > current_nhl_date:
+            already_in_official = True
+
+    team_rows_summary = []
+    team_players_detail = {}
+
+    for team_name, slug in SLUG_MAP.items():
+        pts_att = int(st.session_state.get(f"{slug}_df_att", pd.DataFrame([{"Pts": 0}]))["Pts"].sum())
+        pts_def = int(st.session_state.get(f"{slug}_df_def", pd.DataFrame([{"Pts": 0}]))["Pts"].sum())
+        pts_gard = int(st.session_state.get(f"{slug}_df_gard", pd.DataFrame([{"Pts": 0}]))["Pts"].sum())
+        pts_club = pts_att + pts_def + pts_gard
+
+        pts_journee_partants = 0
+        player_rows = []
+
+        role_defs = [
+            ("att", "ATT", "Partant ✅", True),
+            ("def", "DEF", "Partant ✅", True),
+            ("gard", "GARD", "Partant ✅", True),
+            ("banc_att", "ATT", "Banc 📋", False),
+            ("banc_def", "DEF", "Banc 📋", False),
+            ("banc_gard", "GARD", "Banc 📋", False),
+        ]
+
+        for role_key, pos_lbl, statut_lbl, is_partant in role_defs:
+            df_r = st.session_state.get(f"{slug}_df_{role_key}", pd.DataFrame())
+            if df_r.empty:
+                continue
+            for _, row in df_r.iterrows():
+                nom = str(row.get("Joueurs", "")).strip()
+                if not nom or nom == "[Carreau Libre]":
+                    continue
+                eq_lnh = str(row.get("T", "")).strip().upper()
+                variants = _build_name_variants(nom)
+
+                if pos_lbl == "GARD":
+                    buts, passes, pts_j = 0, 0, 0
+                    for v in variants:
+                        if v in goalie_day_pts:
+                            pts_j = goalie_day_pts[v]
+                            break
+                else:
+                    buts, passes = 0, 0
+                    matched_stats = None
+                    for v in variants:
+                        if eq_lnh and (v, eq_lnh) in skater_by_name_team:
+                            matched_stats = skater_by_name_team[(v, eq_lnh)]
+                            break
+                    if matched_stats is None:
+                        for v in variants:
+                            if v in skater_by_name:
+                                matched_stats = skater_by_name[v]
+                                break
+                    if matched_stats is not None:
+                        buts = matched_stats["but"]
+                        passes = matched_stats["assiste"]
+                    pts_j = buts + passes
+
+                if is_partant:
+                    pts_journee_partants += pts_j
+
+                player_rows.append({
+                    "Nom du joueur": nom,
+                    "Pos": pos_lbl,
+                    "Statut": statut_lbl,
+                    "Éq. LNH": eq_lnh,
+                    "But": buts,
+                    "Assiste": passes,
+                    "Point": pts_j,
+                    "_is_partant": 1 if is_partant else 0
+                })
+
+        total_prov = pts_club if already_in_official else (pts_club + pts_journee_partants)
+
+        team_rows_summary.append({
+            "Équipe": team_name,
+            "Points de la journée": pts_journee_partants,
+            "Point du club": pts_club,
+            "Total": total_prov
+        })
+
+        df_p_detail = pd.DataFrame(player_rows)
+        if not df_p_detail.empty:
+            df_p_detail = df_p_detail.sort_values(
+                by=["Point", "But", "_is_partant", "Nom du joueur"],
+                ascending=[False, False, False, True]
+            ).drop(columns=["_is_partant"]).reset_index(drop=True)
+        team_players_detail[team_name] = df_p_detail
+
+    df_standings_day = pd.DataFrame(team_rows_summary).sort_values(
+        by=["Points de la journée", "Total", "Équipe"],
+        ascending=[False, False, True]
+    ).reset_index(drop=True)
+    df_standings_day.insert(0, "Rang", range(1, len(df_standings_day) + 1))
+
+    if already_in_official:
+        st.info("ℹ️ La mise à jour officielle de la nuit a déjà intégré les matchs de cette journée dans « Point du club ». La colonne **Total** correspond donc déjà au vrai compte (sans compter en double).")
+
+    col_gauche, col_droite = st.columns([1.15, 1.25], vertical_alignment="top")
+
+    with col_gauche:
+        st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin-bottom:10px;'>🏆 CLASSEMENT DE LA JOURNÉE (11 ÉQUIPES)</h3>", unsafe_allow_html=True)
+
+        def style_day_standings(row):
+            if row["Rang"] == 1 and row["Points de la journée"] > 0:
+                return ["background-color: rgba(16, 185, 129, 0.22); color: #ECFDF5; font-weight: 900"] * len(row)
+            return ["background-color: rgba(15, 23, 42, 0.72); color: #F8FAFC"] * len(row)
+
+        st.dataframe(
+            df_standings_day.style.apply(style_day_standings, axis=1),
+            use_container_width=True,
+            hide_index=True,
+            height=435,
+            column_config={
+                "Rang": st.column_config.NumberColumn("Rang", width="small", alignment="center"),
+                "Équipe": st.column_config.TextColumn("Équipe PHDM", width="medium"),
+                "Points de la journée": st.column_config.NumberColumn("Points de la journée", alignment="center"),
+                "Point du club": st.column_config.NumberColumn("Point du club", alignment="center"),
+                "Total": st.column_config.NumberColumn("Total", alignment="center"),
+            }
+        )
+
+    with col_droite:
+        st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900; margin-bottom:10px;'>🔎 JOUEURS DE L'ÉQUIPE (PARTANTS & BANC)</h3>", unsafe_allow_html=True)
+        equipes_triees = df_standings_day["Équipe"].tolist()
+        eq_choisie = st.selectbox("Choisir une équipe :", options=equipes_triees, key="direct_sel_team")
+
+        df_p_show = team_players_detail.get(eq_choisie, pd.DataFrame())
+        if not df_p_show.empty:
+            pts_p = int(df_p_show[df_p_show["Statut"].str.contains("Partant")]["Point"].sum())
+            pts_b = int(df_p_show[df_p_show["Statut"].str.contains("Banc")]["Point"].sum())
+            st.markdown(f"<div style='margin-bottom:8px; font-weight:800; color:#CBD5E1;'>Partants : <span style='color:#34D399;'>{pts_p} pts</span> &nbsp;|&nbsp; Banc (ne compte pas) : <span style='color:#94A3B8;'>{pts_b} pts</span></div>", unsafe_allow_html=True)
+
+            def style_player_day(row):
+                if row["Point"] > 0 and "Partant" in row["Statut"]:
+                    return ["background-color: rgba(16, 185, 129, 0.20); color: #ECFDF5; font-weight: 800"] * len(row)
+                if row["Point"] > 0:
+                    return ["background-color: rgba(245, 158, 11, 0.16); color: #FEF3C7; font-weight: 700"] * len(row)
+                if "Banc" in row["Statut"]:
+                    return ["background-color: rgba(30, 41, 59, 0.35); color: #94A3B8"] * len(row)
+                return ["background-color: rgba(15, 23, 42, 0.65); color: #F8FAFC"] * len(row)
+
+            st.dataframe(
+                df_p_show.style.apply(style_player_day, axis=1),
+                use_container_width=True,
+                hide_index=True,
+                height=520,
+                column_config={
+                    "Nom du joueur": st.column_config.TextColumn("Nom du joueur", width="medium"),
+                    "Pos": st.column_config.TextColumn("Pos", width="small", alignment="center"),
+                    "Statut": st.column_config.TextColumn("Statut", width="small", alignment="center"),
+                    "Éq. LNH": st.column_config.TextColumn("LNH", width="small", alignment="center"),
+                    "But": st.column_config.NumberColumn("But", width="small", alignment="center"),
+                    "Assiste": st.column_config.NumberColumn("Assiste", width="small", alignment="center"),
+                    "Point": st.column_config.NumberColumn("Point", width="small", alignment="center"),
+                }
+            )
+        else:
+            st.info("Aucun joueur trouvé pour cette équipe.")
+
+with tab_direct:
+    render_tab_direct()
