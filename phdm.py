@@ -1877,42 +1877,74 @@ with tab_recrues:
                 st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC)
 
 # =========================================================
+# =========================================================
 # ONGLET 6 : DIRECT DE LA JOURNÉE (STATISTIQUES NON OFFICIELLES)
 # =========================================================
+from concurrent.futures import ThreadPoolExecutor
+
 def _nhl_txt(val):
     if isinstance(val, dict):
         return str(val.get("default", ""))
     return str(val or "")
 
+def _norm_umlaut(s):
+    return s.replace("ue", "u").replace("ae", "a").replace("oe", "o")
+
 @st.cache_data(ttl=45)
-def fetch_live_scoreboard_direct():
+def fetch_scoreboard_by_date_direct(date_str="now"):
+    url = f"https://api-web.nhle.com/v1/score/{date_str}"
     try:
-        r = requests.get("https://api-web.nhle.com/v1/score/now", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         if r.status_code == 200:
             return r.json()
     except Exception:
         pass
     return {}
 
-@st.cache_data(ttl=120)
-def fetch_game_boxscore_direct(game_id):
-    try:
-        r = requests.get(f"https://api-web.nhle.com/v1/gamecenter/{game_id}/boxscore", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        pass
-    return {}
+@st.cache_data(ttl=45)
+def fetch_day_details_parallel(game_ids_tuple):
+    def fetch_one(gid):
+        land, box = {}, {}
+        try:
+            r1 = requests.get(f"https://api-web.nhle.com/v1/gamecenter/{gid}/landing", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            if r1.status_code == 200:
+                land = r1.json()
+        except Exception:
+            pass
+        try:
+            r2 = requests.get(f"https://api-web.nhle.com/v1/gamecenter/{gid}/boxscore", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            if r2.status_code == 200:
+                box = r2.json()
+        except Exception:
+            pass
+        return gid, land, box
+
+    results = {}
+    if not game_ids_tuple:
+        return results
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for gid, land, box in ex.map(fetch_one, game_ids_tuple):
+            results[gid] = (land, box)
+    return results
 
 @st.cache_data(ttl=120)
-def fetch_player_landing_direct(player_id):
-    try:
-        r = requests.get(f"https://api-web.nhle.com/v1/player/{player_id}/landing", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        pass
-    return {}
+def fetch_goalies_landing_parallel(player_ids_tuple):
+    def fetch_g(pid):
+        try:
+            r = requests.get(f"https://api-web.nhle.com/v1/player/{pid}/landing", headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            if r.status_code == 200:
+                return pid, r.json()
+        except Exception:
+            pass
+        return pid, {}
+
+    results = {}
+    if not player_ids_tuple:
+        return results
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for pid, data in ex.map(fetch_g, player_ids_tuple):
+            results[pid] = data
+    return results
 
 def _build_name_variants(nom_excel):
     nc = clean_str(nom_excel)
@@ -1920,21 +1952,111 @@ def _build_name_variants(nom_excel):
     if not nc or nc == "carreau libre":
         return variants
     variants.add(nc)
+    variants.add(_norm_umlaut(nc))
     if nc in ALIASES:
         variants.add(ALIASES[nc])
+        variants.add(_norm_umlaut(ALIASES[nc]))
     parts = nc.split()
     if len(parts) >= 2:
-        variants.add(f"{' '.join(parts[1:])} {parts[0]}")
-        variants.add(f"{parts[-1]} {' '.join(parts[:-1])}")
-        for v in list(variants):
+        v1 = f"{' '.join(parts[1:])} {parts[0]}"
+        v2 = f"{parts[-1]} {' '.join(parts[:-1])}"
+        for v in [v1, v2]:
+            variants.add(v)
+            variants.add(_norm_umlaut(v))
             if v in ALIASES:
                 variants.add(ALIASES[v])
+                variants.add(_norm_umlaut(ALIASES[v]))
     return variants
+
+def _match_live_skater(nom_excel, eq_lnh, live_skaters):
+    """Trouve le joueur LNH même si son nom est inversé, accentué ou coupé dans le CSV."""
+    variants = _build_name_variants(nom_excel)
+    if not variants:
+        return None
+
+    # 1. Correspondance exacte (ou via ALIASES / inversion Nom-Prénom)
+    exact_hits = []
+    for lp in live_skaters:
+        if lp["full"] in variants or lp["full_norm"] in variants:
+            exact_hits.append(lp)
+    if exact_hits:
+        for lp in exact_hits:
+            if eq_lnh and lp["team"] in eq_lnh:
+                return lp
+        return exact_hits[0]
+
+    # 2. Correspondance intelligente (noms coupés/tronqués, sans espaces, initiales)
+    nc = clean_str(nom_excel)
+    parts = nc.split()
+    candidate_splits = []
+    if len(parts) >= 2:
+        candidate_splits.append((parts[0], " ".join(parts[1:])))           # Nom + Prénom(s)
+        candidate_splits.append((" ".join(parts[:-1]), parts[-1]))          # Nom composé + Prénom
+        candidate_splits.append((parts[-1], " ".join(parts[:-1])))          # Prénom(s) + Nom
+        candidate_splits.append((" ".join(parts[1:]), parts[0]))           # Prénom + Nom composé
+
+    fuzzy_hits = []
+    for lp in live_skaters:
+        lp_last = lp["last"]
+        lp_first = lp["first"]
+        if not lp_last or not lp_first:
+            continue
+        lp_last_ns = lp_last.replace(" ", "")
+        matched = False
+        for p_last, p_first in candidate_splits:
+            p_last_n = _norm_umlaut(p_last)
+            p_first_n = _norm_umlaut(p_first)
+            p_last_ns = p_last_n.replace(" ", "")
+
+            last_ok = (
+                p_last_n == lp_last
+                or p_last_ns == lp_last_ns
+                or (len(p_last_n) >= 6 and lp_last.startswith(p_last_n))
+            )
+            if not last_ok:
+                continue
+
+            if len(p_first_n) >= 2:
+                first_ok = lp_first.startswith(p_first_n) or p_first_n.startswith(lp_first)
+            else:
+                first_ok = lp_first.startswith(p_first_n) and (not eq_lnh or lp["team"] in eq_lnh)
+
+            if first_ok:
+                matched = True
+                break
+        if matched:
+            fuzzy_hits.append(lp)
+
+    if fuzzy_hits:
+        for lp in fuzzy_hits:
+            if eq_lnh and lp["team"] in eq_lnh:
+                return lp
+        return fuzzy_hits[0]
+
+    return None
+
+def _match_live_goalie(nom_excel, eq_lnh, live_goalies):
+    variants = _build_name_variants(nom_excel)
+    for lg in live_goalies:
+        if lg["full"] in variants or lg["full_norm"] in variants:
+            return lg
+    # Secours par nom coupé
+    nc = clean_str(nom_excel)
+    parts = nc.split()
+    if len(parts) >= 2:
+        for lg in live_goalies:
+            for p_last, p_first in [(parts[0], " ".join(parts[1:])), (parts[-1], " ".join(parts[:-1]))]:
+                if (p_last == lg["last"] or p_last.replace(" ", "") == lg["last"].replace(" ", "")) and lg["first"].startswith(p_first[:1]):
+                    if len(p_first) >= 2 and lg["first"].startswith(p_first):
+                        return lg
+                    if len(p_first) == 1 and (not eq_lnh or lg["team"] in eq_lnh):
+                        return lg
+    return None
 
 @st.fragment(run_every=60)
 def render_tab_direct():
     st.markdown("""
-    <div style='background: rgba(180, 83, 9, 0.28); border: 2px solid #F59E0B; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; text-align: center;'>
+    <div style='background: rgba(180, 83, 9, 0.28); border: 2px solid #F59E0B; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; text-align: center;'>
         <div style='font-size: 1.1rem; font-weight: 900; color: #FCD34D; letter-spacing: 0.5px;'>
             ⚠️ STATISTIQUES NON OFFICIELLES — DIRECT DE LA JOURNÉE
         </div>
@@ -1944,13 +2066,26 @@ def render_tab_direct():
     </div>
     """, unsafe_allow_html=True)
 
+    now_data = fetch_scoreboard_by_date_direct("now")
+    now_date = now_data.get("currentDate", "")
+    prev_date = now_data.get("prevDate", "")
+
+    col_d1, col_d2 = st.columns([1.4, 2.6], vertical_alignment="center")
+    with col_d1:
+        choix_jour = st.radio(
+            "📅 Journée à afficher :",
+            [f"Aujourd'hui ({now_date or 'En direct'})", f"Hier ({prev_date or 'Veille'})"],
+            horizontal=True,
+            key="direct_day_choice"
+        )
+    score_data = now_data if choix_jour.startswith("Aujourd'hui") else (fetch_scoreboard_by_date_direct(prev_date) if prev_date else now_data)
+    current_nhl_date = score_data.get("currentDate", now_date)
+    games = score_data.get("games", [])
+
     heure_qc = datetime.now(ZoneInfo("America/Toronto")).strftime("%H:%M:%S")
     last_maj = st.session_state.get("last_official_update_et", "")
-    st.caption(f"🔄 Actualisation automatique toutes les 60 secondes (dernière lecture : {heure_qc} HE) • Dernière mise à jour officielle (Point du club) : {last_maj or 'Non enregistrée'}")
-
-    score_data = fetch_live_scoreboard_direct()
-    games = score_data.get("games", [])
-    current_nhl_date = score_data.get("currentDate", "")
+    with col_d2:
+        st.caption(f"🔄 Rafraîchi toutes les 60 s (dernier : {heure_qc} HE) • Date LNH affichée : **{current_nhl_date}** • Dernière MAJ officielle : {last_maj or 'Non enregistrée'}")
 
     if games:
         cols_g = st.columns(min(6, len(games)))
@@ -1977,76 +2112,163 @@ def render_tab_direct():
     else:
         st.info("Aucun match LNH au calendrier pour cette journée.")
 
-    skater_by_name_team = {}
-    skater_by_name = {}
-    goalie_day_pts = {}
+    # Récupération en parallèle des fiches officielles (/landing + /boxscore) de chaque match actif/terminé
+    active_gids = tuple(g.get("id") for g in games if g.get("id") and g.get("gameState") in ("LIVE", "CRIT", "FINAL", "OFF"))
+    details_map = fetch_day_details_parallel(active_gids)
+
+    skaters_by_pid = {}  # pid -> dict stats + noms complets
     all_games_final = bool(games)
+    goalie_pids_to_check = []
+    goalie_game_contexts = []
 
     for g in games:
+        gid = g.get("id")
         state = g.get("gameState", "")
         if state not in ("FINAL", "OFF"):
             all_games_final = False
+        if not gid or gid not in details_map:
+            continue
 
+        land, box = details_map[gid]
         away = g.get("awayTeam", {})
         home = g.get("homeTeam", {})
+        away_ab = _nhl_txt(away.get("abbrev")).upper()
+        home_ab = _nhl_txt(home.get("abbrev")).upper()
 
-        for goal in g.get("goals", []):
-            g_team = _nhl_txt(goal.get("teamAbbrev")).upper()
-            b_full = clean_str(f"{_nhl_txt(goal.get('firstName'))} {_nhl_txt(goal.get('lastName'))}")
-            if b_full:
-                skater_by_name.setdefault(b_full, {"but": 0, "assiste": 0})
-                skater_by_name[b_full]["but"] += 1
-                if g_team:
-                    skater_by_name_team.setdefault((b_full, g_team), {"but": 0, "assiste": 0})
-                    skater_by_name_team[(b_full, g_team)]["but"] += 1
-            for ast in goal.get("assists", []):
-                a_full = clean_str(f"{_nhl_txt(ast.get('firstName'))} {_nhl_txt(ast.get('lastName'))}")
-                if a_full:
-                    skater_by_name.setdefault(a_full, {"but": 0, "assiste": 0})
-                    skater_by_name[a_full]["assiste"] += 1
-                    if g_team:
-                        skater_by_name_team.setdefault((a_full, g_team), {"but": 0, "assiste": 0})
-                        skater_by_name_team[(a_full, g_team)]["assiste"] += 1
+        # 1. Lecture de /landing -> summary.scoring (noms complets des buteurs et passeurs, hors tirs de barrage)
+        scoring_periods = land.get("summary", {}).get("scoring", [])
+        for per in scoring_periods:
+            if per.get("periodDescriptor", {}).get("periodType") == "SO":
+                continue
+            for goal in per.get("goals", []):
+                g_team = _nhl_txt(goal.get("teamAbbrev")).upper()
+                b_pid = goal.get("playerId")
+                b_fn = _nhl_txt(goal.get("firstName"))
+                b_ln = _nhl_txt(goal.get("lastName"))
+                if b_pid or (b_fn and b_ln):
+                    key = b_pid or f"{b_fn}_{b_ln}_{g_team}"
+                    if key not in skaters_by_pid:
+                        skaters_by_pid[key] = {"pid": b_pid, "first_raw": b_fn, "last_raw": b_ln, "team": g_team, "but": 0, "assiste": 0}
+                    skaters_by_pid[key]["but"] += 1
 
+                for ast in goal.get("assists", []):
+                    a_pid = ast.get("playerId")
+                    a_fn = _nhl_txt(ast.get("firstName"))
+                    a_ln = _nhl_txt(ast.get("lastName"))
+                    if a_pid or (a_fn and a_ln):
+                        akey = a_pid or f"{a_fn}_{a_ln}_{g_team}"
+                        if akey not in skaters_by_pid:
+                            skaters_by_pid[akey] = {"pid": a_pid, "first_raw": a_fn, "last_raw": a_ln, "team": g_team, "but": 0, "assiste": 0}
+                        skaters_by_pid[akey]["assiste"] += 1
+
+        # 2. Vérification croisée avec /boxscore (garantit le bon total de buts/passes même si /landing a un léger délai)
+        pbg = box.get("playerByGameStats", {})
+        for side_key, team_ab in [("awayTeam", away_ab), ("homeTeam", home_ab)]:
+            side_data = pbg.get(side_key, {})
+            for sk in side_data.get("forwards", []) + side_data.get("defense", []):
+                g_cnt = int(sk.get("goals", 0) or 0)
+                a_cnt = int(sk.get("assists", 0) or 0)
+                if g_cnt == 0 and a_cnt == 0:
+                    continue
+                pid = sk.get("playerId")
+                if pid and pid in skaters_by_pid:
+                    skaters_by_pid[pid]["but"] = max(skaters_by_pid[pid]["but"], g_cnt)
+                    skaters_by_pid[pid]["assiste"] = max(skaters_by_pid[pid]["assiste"], a_cnt)
+                elif pid:
+                    # Au cas où /landing n'avait pas encore ce joueur, on récupérera son nom complet via /player/{pid}/landing
+                    skaters_by_pid[pid] = {"pid": pid, "first_raw": "", "last_raw": _nhl_txt(sk.get("name")), "team": team_ab, "but": g_cnt, "assiste": a_cnt, "_need_name": True}
+
+        # 3. Gardiens pour matchs terminés
         if state in ("FINAL", "OFF"):
-            box = fetch_game_boxscore_direct(g.get("id"))
-            pbg = box.get("playerByGameStats", {})
             away_sc = away.get("score", 0)
             home_sc = home.get("score", 0)
             last_period = g.get("gameOutcome", {}).get("lastPeriodType", "REG")
             win_gid = g.get("winningGoalie", {}).get("playerId")
-
-            for side_key, opp_score, won_game in [("awayTeam", home_sc, away_sc > home_sc), ("homeTeam", away_sc, home_sc > away_sc)]:
+            for side_key, team_ab, opp_score, won_game in [
+                ("awayTeam", away_ab, home_sc, away_sc > home_sc),
+                ("homeTeam", home_ab, away_sc, home_sc > away_sc)
+            ]:
                 g_list = pbg.get(side_key, {}).get("goalies", [])
-                played_goalies = [gl for gl in g_list if gl.get("toi", "00:00") not in ("00:00", "0:00", "")]
-                for gl in played_goalies:
+                played = [gl for gl in g_list if gl.get("toi", "00:00") not in ("00:00", "0:00", "")]
+                for gl in played:
                     pid = gl.get("playerId")
-                    if not pid:
-                        continue
-                    landing = fetch_player_landing_direct(pid)
-                    fn = _nhl_txt(landing.get("firstName"))
-                    ln = _nhl_txt(landing.get("lastName"))
-                    g_clean = clean_str(f"{fn} {ln}")
-                    if not g_clean:
-                        continue
+                    if pid:
+                        goalie_pids_to_check.append(pid)
+                        goalie_game_contexts.append({
+                            "gid": gid, "pid": pid, "team": team_ab,
+                            "opp_score": opp_score, "won_game": won_game,
+                            "last_period": last_period, "win_gid": win_gid,
+                            "is_last_played": (gl == played[-1]), "nb_played": len(played)
+                        })
 
-                    pts_g = 0
-                    decision = ""
-                    for gm in landing.get("last5Games", []):
-                        if gm.get("gameId") == g.get("id"):
-                            decision = str(gm.get("decision", "")).upper()
-                            break
+    # Complète les rares noms manquants si /boxscore a devancé /landing
+    missing_name_pids = tuple(v["pid"] for v in skaters_by_pid.values() if v.get("_need_name") and v.get("pid"))
+    all_pid_lookups = tuple(set(goalie_pids_to_check) | set(missing_name_pids))
+    player_landings = fetch_goalies_landing_parallel(all_pid_lookups)
 
-                    if decision == "W" or (not decision and win_gid == pid):
-                        pts_g += 2
-                    elif decision in ("O", "OT", "OTL") or (not decision and not won_game and last_period in ("OT", "SO") and gl == played_goalies[-1]):
-                        pts_g += 1
+    for v in skaters_by_pid.values():
+        if v.get("_need_name") and v.get("pid") in player_landings:
+            pl = player_landings[v["pid"]]
+            v["first_raw"] = _nhl_txt(pl.get("firstName")) or v["first_raw"]
+            v["last_raw"] = _nhl_txt(pl.get("lastName")) or v["last_raw"]
 
-                    if won_game and opp_score == 0 and len(played_goalies) == 1:
-                        pts_g += 1
+    live_skaters = []
+    for v in skaters_by_pid.values():
+        fn_c = clean_str(v["first_raw"])
+        ln_c = clean_str(v["last_raw"])
+        full_c = f"{fn_c} {ln_c}".strip()
+        live_skaters.append({
+            "display": f"{v['first_raw']} {v['last_raw']}".strip(),
+            "first": _norm_umlaut(fn_c),
+            "last": _norm_umlaut(ln_c),
+            "full": full_c,
+            "full_norm": _norm_umlaut(full_c),
+            "team": v["team"],
+            "but": v["but"],
+            "assiste": v["assiste"],
+            "matched_in_pool": False
+        })
 
-                    if pts_g > 0:
-                        goalie_day_pts[g_clean] = goalie_day_pts.get(g_clean, 0) + pts_g
+    # Calcul des points des gardiens (2 pts V, 1 pt DP/DF, +1 pt BL)
+    live_goalies_map = {}
+    for ctx in goalie_game_contexts:
+        pl = player_landings.get(ctx["pid"], {})
+        fn = _nhl_txt(pl.get("firstName"))
+        ln = _nhl_txt(pl.get("lastName"))
+        fn_c = clean_str(fn)
+        ln_c = clean_str(ln)
+        full_c = f"{fn_c} {ln_c}".strip()
+        if not full_c:
+            continue
+
+        pts_g = 0
+        decision = ""
+        for gm in pl.get("last5Games", []):
+            if gm.get("gameId") == ctx["gid"]:
+                decision = str(gm.get("decision", "")).upper()
+                break
+
+        if decision == "W" or (not decision and ctx["win_gid"] == ctx["pid"]):
+            pts_g += 2
+        elif decision in ("O", "OT", "OTL") or (not decision and not ctx["won_game"] and ctx["last_period"] in ("OT", "SO") and ctx["is_last_played"]):
+            pts_g += 1
+
+        if ctx["won_game"] and ctx["opp_score"] == 0 and ctx["nb_played"] == 1:
+            pts_g += 1
+
+        if pts_g > 0:
+            if ctx["pid"] not in live_goalies_map:
+                live_goalies_map[ctx["pid"]] = {
+                    "display": f"{fn} {ln}".strip(),
+                    "first": _norm_umlaut(fn_c),
+                    "last": _norm_umlaut(ln_c),
+                    "full": full_c,
+                    "full_norm": _norm_umlaut(full_c),
+                    "team": ctx["team"],
+                    "pts": 0
+                }
+            live_goalies_map[ctx["pid"]]["pts"] += pts_g
+    live_goalies = list(live_goalies_map.values())
 
     already_in_official = False
     if last_maj and current_nhl_date and all_games_final:
@@ -2084,29 +2306,19 @@ def render_tab_direct():
                 if not nom or nom == "[Carreau Libre]":
                     continue
                 eq_lnh = str(row.get("T", "")).strip().upper()
-                variants = _build_name_variants(nom)
 
                 if pos_lbl == "GARD":
                     buts, passes, pts_j = 0, 0, 0
-                    for v in variants:
-                        if v in goalie_day_pts:
-                            pts_j = goalie_day_pts[v]
-                            break
+                    mg = _match_live_goalie(nom, eq_lnh, live_goalies)
+                    if mg:
+                        pts_j = mg["pts"]
                 else:
                     buts, passes = 0, 0
-                    matched_stats = None
-                    for v in variants:
-                        if eq_lnh and (v, eq_lnh) in skater_by_name_team:
-                            matched_stats = skater_by_name_team[(v, eq_lnh)]
-                            break
-                    if matched_stats is None:
-                        for v in variants:
-                            if v in skater_by_name:
-                                matched_stats = skater_by_name[v]
-                                break
-                    if matched_stats is not None:
-                        buts = matched_stats["but"]
-                        passes = matched_stats["assiste"]
+                    ms = _match_live_skater(nom, eq_lnh, live_skaters)
+                    if ms:
+                        buts = ms["but"]
+                        passes = ms["assiste"]
+                        ms["matched_in_pool"] = True
                     pts_j = buts + passes
 
                 if is_partant:
@@ -2210,6 +2422,22 @@ def render_tab_direct():
             )
         else:
             st.info("Aucun joueur trouvé pour cette équipe.")
+
+    # Petit outil de vérification pour voir tous les pointeurs LNH du jour
+    if live_skaters:
+        with st.expander("🔍 Vérifier tous les pointeurs LNH du jour (et s'ils sont dans le pool)"):
+            df_check = pd.DataFrame([
+                {
+                    "Joueur LNH": lp["display"],
+                    "Équipe": lp["team"],
+                    "But": lp["but"],
+                    "Assiste": lp["assiste"],
+                    "Point": lp["but"] + lp["assiste"],
+                    "Trouvé dans PHDM": "✅ Oui" if lp["matched_in_pool"] else "— Libre / Non trouvé"
+                }
+                for lp in live_skaters
+            ]).sort_values(by=["Point", "But"], ascending=[False, False]).reset_index(drop=True)
+            st.dataframe(df_check, use_container_width=True, hide_index=True)
 
 with tab_direct:
     render_tab_direct()
