@@ -1,0 +1,34 @@
+name: Mise à jour officielle LNH (3h du matin)
+
+on:
+  schedule:
+    - cron: "15 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-phdm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les librairies
+        run: pip install pandas requests tzdata
+
+      - name: Lancer la mise à jour LNH
+        run: python maj_nuit.py
+
+      - name: Sauvegarder phdm_state.json sur GitHub
+        run: |
+          git config user.name "PHDM Bot"
+          git config user.email "bot@phdm.local"
+          git add phdm_state.json
+          git diff --cached --quiet || (git commit -m "🏒 Mise à jour officielle LNH (nuit)" && git push)
