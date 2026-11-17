@@ -1,6 +1,6 @@
 {
     "schema_version": 3,
-    "last_official_update_et": "2026-11-16 13:33",
+    "last_official_update_et": "2026-11-17 05:10",
     "rosters": {
         "dal": {
             "att": [
@@ -50,6 +50,15 @@
                     "Pts": 24
                 },
                 {
+                    "No": 10,
+                    "Joueurs": "Boeser Brock",
+                    "T": "VAN",
+                    "A": 29,
+                    "EXP": 0,
+                    "PJ": 23,
+                    "Pts": 23
+                },
+                {
                     "No": 6,
                     "Joueurs": "Reinhart Sam",
                     "T": "FLA",
@@ -64,7 +73,7 @@
                     "T": "NYR",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 22
                 },
                 {
@@ -82,15 +91,6 @@
                     "T": "FLA",
                     "A": 31,
                     "EXP": 1,
-                    "PJ": 22,
-                    "Pts": 20
-                },
-                {
-                    "No": 10,
-                    "Joueurs": "Boeser Brock",
-                    "T": "VAN",
-                    "A": 29,
-                    "EXP": 0,
                     "PJ": 22,
                     "Pts": 20
                 },
@@ -190,7 +190,7 @@
                     "T": "NYR",
                     "A": 31,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 11
                 },
                 {
@@ -2072,14 +2072,14 @@
                     "T": "NYR",
                     "A": 33,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 19
                 },
                 {
                     "No": 11,
                     "Joueurs": "Hintz Roope",
                     "T": "DAL",
-                    "A": 29,
+                    "A": 30,
                     "EXP": 2,
                     "PJ": 20,
                     "Pts": 19
@@ -2153,7 +2153,16 @@
                     "T": "UTA",
                     "A": 33,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
+                    "Pts": 11
+                },
+                {
+                    "No": 21,
+                    "Joueurs": "Lee Anders",
+                    "T": "UTA",
+                    "A": 36,
+                    "EXP": 1,
+                    "PJ": 22,
                     "Pts": 10
                 },
                 {
@@ -2162,15 +2171,6 @@
                     "T": "COL",
                     "A": 27,
                     "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 9
-                },
-                {
-                    "No": 21,
-                    "Joueurs": "Lee Anders",
-                    "T": "UTA",
-                    "A": 36,
-                    "EXP": 1,
                     "PJ": 21,
                     "Pts": 9
                 },
@@ -2184,6 +2184,15 @@
                     "Pts": 8
                 },
                 {
+                    "No": 24,
+                    "Joueurs": "Danault Phillip",
+                    "T": "MTL",
+                    "A": 33,
+                    "EXP": 2,
+                    "PJ": 21,
+                    "Pts": 8
+                },
+                {
                     "No": 23,
                     "Joueurs": "Jenner Boone",
                     "T": "WSH",
@@ -2191,15 +2200,6 @@
                     "EXP": 0,
                     "PJ": 18,
                     "Pts": 8
-                },
-                {
-                    "No": 24,
-                    "Joueurs": "Danault Phillip",
-                    "T": "MTL",
-                    "A": 33,
-                    "EXP": 2,
-                    "PJ": 20,
-                    "Pts": 7
                 },
                 {
                     "No": 25,
@@ -2227,7 +2227,7 @@
                     "T": "UTA",
                     "A": 28,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 22
                 },
                 {
@@ -4233,7 +4233,7 @@
                     "T": "VAN",
                     "A": 28,
                     "EXP": 2,
-                    "PJ": 22,
+                    "PJ": 23,
                     "Pts": 23
                 },
                 {
@@ -4278,7 +4278,7 @@
                     "T": "MTL",
                     "A": 22,
                     "EXP": 1,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 13
                 },
                 {
@@ -4296,7 +4296,7 @@
                     "T": "NYR",
                     "A": 21,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 11
                 },
                 {
@@ -4341,7 +4341,7 @@
                     "T": "UTA",
                     "A": 26,
                     "EXP": 0,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 7
                 },
                 {
@@ -4442,7 +4442,7 @@
                     "T": "MTL",
                     "A": 24,
                     "EXP": 0,
-                    "PJ": 16,
+                    "PJ": 17,
                     "Pts": 6
                 },
                 {
@@ -7052,6 +7052,15 @@
                     "Pts": 13
                 },
                 {
+                    "No": 16,
+                    "Joueurs": "Debrusk Jake",
+                    "T": "VAN",
+                    "A": 30,
+                    "EXP": 2,
+                    "PJ": 21,
+                    "Pts": 12
+                },
+                {
                     "No": 10,
                     "Joueurs": "McTavish Mason",
                     "T": "STL",
@@ -7106,15 +7115,6 @@
                     "Pts": 10
                 },
                 {
-                    "No": 16,
-                    "Joueurs": "Debrusk Jake",
-                    "T": "VAN",
-                    "A": 30,
-                    "EXP": 2,
-                    "PJ": 20,
-                    "Pts": 10
-                },
-                {
                     "No": 17,
                     "Joueurs": "Protas Aliaksei",
                     "T": "WSH",
@@ -7158,8 +7158,8 @@
                     "T": "NYR",
                     "A": 28,
                     "EXP": 1,
-                    "PJ": 21,
-                    "Pts": 23
+                    "PJ": 22,
+                    "Pts": 24
                 },
                 {
                     "No": 2,
@@ -7194,8 +7194,8 @@
                     "T": "MTL",
                     "A": 26,
                     "EXP": 0,
-                    "PJ": 20,
-                    "Pts": 8
+                    "PJ": 21,
+                    "Pts": 9
                 },
                 {
                     "No": 6,
@@ -7261,7 +7261,7 @@
                     "T": "MTL",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 18,
+                    "PJ": 19,
                     "Pts": 7
                 },
                 {
@@ -7288,7 +7288,7 @@
                     "T": "NYR",
                     "A": 27,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 6
                 },
                 {
@@ -8021,8 +8021,8 @@
                     "T": "NYR",
                     "A": 32,
                     "EXP": 2,
-                    "PJ": 2,
-                    "Pts": 4
+                    "PJ": 3,
+                    "Pts": 6
                 },
                 {
                     "No": 6,
@@ -9468,19 +9468,19 @@
                     "Pts": 9
                 },
                 {
-                    "No": 14,
-                    "Joueurs": "Svechkov Fedor",
-                    "T": "COL",
-                    "A": 23,
-                    "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 8
-                },
-                {
                     "No": 15,
                     "Joueurs": "Cotter Paul",
                     "T": "VAN",
                     "A": 27,
+                    "EXP": 2,
+                    "PJ": 22,
+                    "Pts": 8
+                },
+                {
+                    "No": 14,
+                    "Joueurs": "Svechkov Fedor",
+                    "T": "COL",
+                    "A": 23,
                     "EXP": 2,
                     "PJ": 21,
                     "Pts": 8
@@ -9509,7 +9509,7 @@
                     "T": "MTL",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 8
                 },
                 {
@@ -9668,7 +9668,7 @@
                     "T": "VAN",
                     "A": 28,
                     "EXP": 1,
-                    "PJ": 22,
+                    "PJ": 23,
                     "Pts": 6
                 },
                 {
@@ -9690,21 +9690,21 @@
                     "Pts": 5
                 },
                 {
+                    "No": 5,
+                    "Joueurs": "Chytil Filip",
+                    "T": "VAN",
+                    "A": 27,
+                    "EXP": 0,
+                    "PJ": 10,
+                    "Pts": 5
+                },
+                {
                     "No": 4,
                     "Joueurs": "Girgensons Zemgus",
                     "T": "TBL",
                     "A": 32,
                     "EXP": 2,
                     "PJ": 17,
-                    "Pts": 4
-                },
-                {
-                    "No": 5,
-                    "Joueurs": "Chytil Filip",
-                    "T": "VAN",
-                    "A": 27,
-                    "EXP": 0,
-                    "PJ": 9,
                     "Pts": 4
                 },
                 {
@@ -12013,6 +12013,15 @@
                     "Pts": 12
                 },
                 {
+                    "No": 14,
+                    "Joueurs": "Cuylle Will",
+                    "T": "NYR",
+                    "A": 24,
+                    "EXP": 1,
+                    "PJ": 22,
+                    "Pts": 11
+                },
+                {
                     "No": 10,
                     "Joueurs": "Ostlund Noah",
                     "T": "BUF",
@@ -12027,7 +12036,7 @@
                     "T": "VAN",
                     "A": 22,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 10
                 },
                 {
@@ -12036,7 +12045,7 @@
                     "T": "MTL",
                     "A": 25,
                     "EXP": 1,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 10
                 },
                 {
@@ -12046,15 +12055,6 @@
                     "A": 20,
                     "EXP": 2,
                     "PJ": 23,
-                    "Pts": 9
-                },
-                {
-                    "No": 14,
-                    "Joueurs": "Cuylle Will",
-                    "T": "NYR",
-                    "A": 24,
-                    "EXP": 1,
-                    "PJ": 21,
                     "Pts": 9
                 },
                 {
@@ -12099,7 +12099,7 @@
                     "T": "VAN",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 7
                 },
                 {
@@ -12191,8 +12191,8 @@
                     "T": "NYR",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 4
+                    "PJ": 22,
+                    "Pts": 5
                 },
                 {
                     "No": 8,
@@ -12276,7 +12276,7 @@
                     "T": "UTA",
                     "A": 21,
                     "EXP": 1,
-                    "PJ": 16,
+                    "PJ": 17,
                     "Pts": 4
                 },
                 {
@@ -12330,7 +12330,7 @@
                     "T": "UTA",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 12,
+                    "PJ": 13,
                     "Pts": 3
                 },
                 {
@@ -12339,7 +12339,7 @@
                     "T": "MTL",
                     "A": 22,
                     "EXP": 2,
-                    "PJ": 8,
+                    "PJ": 9,
                     "Pts": 3
                 },
                 {
@@ -12348,7 +12348,7 @@
                     "T": "MTL",
                     "A": 22,
                     "EXP": 2,
-                    "PJ": 6,
+                    "PJ": 7,
                     "Pts": 3
                 },
                 {
@@ -14767,8 +14767,8 @@
                     "T": "UTA",
                     "A": 28,
                     "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 27
+                    "PJ": 22,
+                    "Pts": 28
                 },
                 {
                     "No": 2,
@@ -14785,8 +14785,8 @@
                     "T": "VAN",
                     "A": 22,
                     "EXP": 2,
-                    "PJ": 22,
-                    "Pts": 16
+                    "PJ": 23,
+                    "Pts": 18
                 },
                 {
                     "No": 4,
@@ -14830,7 +14830,7 @@
                     "T": "NYR",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 14
                 },
                 {
@@ -15014,7 +15014,7 @@
                     "T": "MTL",
                     "A": 21,
                     "EXP": 2,
-                    "PJ": 12,
+                    "PJ": 13,
                     "Pts": 22
                 },
                 {
@@ -15133,7 +15133,7 @@
                     "T": "MTL",
                     "A": 27,
                     "EXP": 2,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 5
                 },
                 {
@@ -15580,20 +15580,20 @@
             ],
             "banc_def": [
                 {
-                    "No": 1,
-                    "Joueurs": "Anderson Mikey",
-                    "T": "LAK",
-                    "A": 27,
-                    "EXP": 2,
-                    "PJ": 18,
-                    "Pts": 4
-                },
-                {
                     "No": 2,
                     "Joueurs": "Willander Tom",
                     "T": "VAN",
                     "A": 21,
                     "EXP": 1,
+                    "PJ": 19,
+                    "Pts": 4
+                },
+                {
+                    "No": 1,
+                    "Joueurs": "Anderson Mikey",
+                    "T": "LAK",
+                    "A": 27,
+                    "EXP": 2,
                     "PJ": 18,
                     "Pts": 4
                 },
@@ -15613,6 +15613,15 @@
                     "A": 28,
                     "EXP": 2,
                     "PJ": 21,
+                    "Pts": 2
+                },
+                {
+                    "No": 8,
+                    "Joueurs": "Morrow Scott",
+                    "T": "NYR",
+                    "A": 24,
+                    "EXP": 2,
+                    "PJ": 8,
                     "Pts": 2
                 },
                 {
@@ -15640,15 +15649,6 @@
                     "A": 30,
                     "EXP": 1,
                     "PJ": 11,
-                    "Pts": 1
-                },
-                {
-                    "No": 8,
-                    "Joueurs": "Morrow Scott",
-                    "T": "NYR",
-                    "A": 24,
-                    "EXP": 2,
-                    "PJ": 7,
                     "Pts": 1
                 },
                 {
@@ -15807,6 +15807,15 @@
                     "Pts": 8
                 },
                 {
+                    "No": 14,
+                    "Joueurs": "Tolopilo Nikita",
+                    "T": "VAN",
+                    "A": 26,
+                    "EXP": 2,
+                    "PJ": 1,
+                    "Pts": 2
+                },
+                {
                     "No": 3,
                     "Joueurs": "Black Cooper",
                     "T": "FLA",
@@ -15901,15 +15910,6 @@
                     "Joueurs": "Tiefensee Arno",
                     "T": "DAL",
                     "A": 24,
-                    "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 14,
-                    "Joueurs": "Tolopilo Nikita",
-                    "T": "VAN",
-                    "A": 26,
                     "EXP": 2,
                     "PJ": 0,
                     "Pts": 0
@@ -17379,6 +17379,15 @@
                     "Pts": 21
                 },
                 {
+                    "No": 14,
+                    "Joueurs": "Miller J.T.",
+                    "T": "NYR",
+                    "A": 33,
+                    "EXP": 2,
+                    "PJ": 22,
+                    "Pts": 17
+                },
+                {
                     "No": 12,
                     "Joueurs": "Pinto Shane",
                     "T": "OTT",
@@ -17393,17 +17402,8 @@
                     "T": "MTL",
                     "A": 27,
                     "EXP": 1,
-                    "PJ": 14,
+                    "PJ": 15,
                     "Pts": 17
-                },
-                {
-                    "No": 14,
-                    "Joueurs": "Miller J.T.",
-                    "T": "NYR",
-                    "A": 33,
-                    "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 16
                 },
                 {
                     "No": 15,
@@ -17548,7 +17548,7 @@
                     "T": "UTA",
                     "A": 32,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 5
                 },
                 {
@@ -17577,7 +17577,7 @@
                     "T": "UTA",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 15,
+                    "PJ": 16,
                     "Pts": 16
                 },
                 {
@@ -17615,7 +17615,7 @@
                     "T": "MTL",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 18,
+                    "PJ": 19,
                     "Pts": 7
                 },
                 {
@@ -18139,7 +18139,7 @@
                     "T": "NYR",
                     "A": 25,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 2
                 },
                 {
@@ -18461,8 +18461,8 @@
                     "T": "UTA",
                     "A": 22,
                     "EXP": 2,
-                    "PJ": 18,
-                    "Pts": 21
+                    "PJ": 19,
+                    "Pts": 22
                 },
                 {
                     "No": 3,
@@ -18497,6 +18497,15 @@
                     "T": "VAN",
                     "A": 27,
                     "EXP": 2,
+                    "PJ": 23,
+                    "Pts": 12
+                },
+                {
+                    "No": 11,
+                    "Joueurs": "Hayton Barrett",
+                    "T": "UTA",
+                    "A": 26,
+                    "EXP": 0,
                     "PJ": 22,
                     "Pts": 12
                 },
@@ -18537,15 +18546,6 @@
                     "Pts": 11
                 },
                 {
-                    "No": 11,
-                    "Joueurs": "Hayton Barrett",
-                    "T": "UTA",
-                    "A": 26,
-                    "EXP": 0,
-                    "PJ": 21,
-                    "Pts": 11
-                },
-                {
                     "No": 12,
                     "Joueurs": "Lundell Anton",
                     "T": "FLA",
@@ -18555,19 +18555,19 @@
                     "Pts": 11
                 },
                 {
-                    "No": 13,
-                    "Joueurs": "Robinson Eric",
-                    "T": "CAR",
-                    "A": 31,
-                    "EXP": 2,
-                    "PJ": 20,
-                    "Pts": 9
-                },
-                {
                     "No": 14,
                     "Joueurs": "Bolduc Zachary",
                     "T": "MTL",
                     "A": 23,
+                    "EXP": 2,
+                    "PJ": 21,
+                    "Pts": 9
+                },
+                {
+                    "No": 13,
+                    "Joueurs": "Robinson Eric",
+                    "T": "CAR",
+                    "A": 31,
                     "EXP": 2,
                     "PJ": 20,
                     "Pts": 9
@@ -18697,7 +18697,7 @@
                     "T": "VAN",
                     "A": 22,
                     "EXP": 2,
-                    "PJ": 22,
+                    "PJ": 23,
                     "Pts": 4
                 }
             ],
@@ -18728,8 +18728,8 @@
                     "T": "NYR",
                     "A": 23,
                     "EXP": 2,
-                    "PJ": 21,
-                    "Pts": 5
+                    "PJ": 22,
+                    "Pts": 6
                 },
                 {
                     "No": 2,
@@ -21120,7 +21120,7 @@
                     "T": "UTA",
                     "A": 29,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 7
                 },
                 {
@@ -21185,8 +21185,8 @@
                     "T": "MTL",
                     "A": 22,
                     "EXP": 1,
-                    "PJ": 20,
-                    "Pts": 18
+                    "PJ": 21,
+                    "Pts": 19
                 },
                 {
                     "No": 4,
@@ -21203,7 +21203,7 @@
                     "T": "VAN",
                     "A": 29,
                     "EXP": 1,
-                    "PJ": 22,
+                    "PJ": 23,
                     "Pts": 14
                 },
                 {
@@ -21234,6 +21234,15 @@
                     "Pts": 7
                 },
                 {
+                    "No": 10,
+                    "Joueurs": "Simashev Dmitri",
+                    "T": "UTA",
+                    "A": 21,
+                    "EXP": 1,
+                    "PJ": 22,
+                    "Pts": 6
+                },
+                {
                     "No": 9,
                     "Joueurs": "Chatfield Jalen",
                     "T": "CAR",
@@ -21243,21 +21252,12 @@
                     "Pts": 6
                 },
                 {
-                    "No": 10,
-                    "Joueurs": "Simashev Dmitri",
-                    "T": "UTA",
-                    "A": 21,
-                    "EXP": 1,
-                    "PJ": 21,
-                    "Pts": 6
-                },
-                {
                     "No": 11,
                     "Joueurs": "Buium Zeev",
                     "T": "VAN",
                     "A": 20,
                     "EXP": 1,
-                    "PJ": 22,
+                    "PJ": 23,
                     "Pts": 5
                 }
             ],
@@ -21324,7 +21324,7 @@
                     "T": "MTL",
                     "A": 23,
                     "EXP": 2,
-                    "PJ": 13,
+                    "PJ": 14,
                     "Pts": 2
                 },
                 {
@@ -21720,9 +21720,9 @@
                     "No": 3,
                     "Joueurs": "Engstrom Adam",
                     "T": "MTL",
-                    "A": 22,
+                    "A": 23,
                     "EXP": 2,
-                    "PJ": 13,
+                    "PJ": 14,
                     "Pts": 2
                 },
                 {
@@ -23326,7 +23326,7 @@
                     "T": "MTL",
                     "A": 25,
                     "EXP": 2,
-                    "PJ": 20,
+                    "PJ": 21,
                     "Pts": 19
                 },
                 {
@@ -23456,21 +23456,21 @@
                     "Pts": 11
                 },
                 {
+                    "No": 22,
+                    "Joueurs": "Yamamoto Kailer",
+                    "T": "UTA",
+                    "A": 28,
+                    "EXP": 0,
+                    "PJ": 13,
+                    "Pts": 11
+                },
+                {
                     "No": 21,
                     "Joueurs": "Kane Patrick",
                     "T": "CHI",
                     "A": 37,
                     "EXP": 1,
                     "PJ": 17,
-                    "Pts": 10
-                },
-                {
-                    "No": 22,
-                    "Joueurs": "Yamamoto Kailer",
-                    "T": "UTA",
-                    "A": 28,
-                    "EXP": 0,
-                    "PJ": 12,
                     "Pts": 10
                 }
             ],
@@ -23683,7 +23683,7 @@
                     "T": "NYR",
                     "A": 23,
                     "EXP": 2,
-                    "PJ": 13,
+                    "PJ": 14,
                     "Pts": 3
                 },
                 {
@@ -24117,7 +24117,7 @@
                     "T": "NYR",
                     "A": 30,
                     "EXP": 1,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 7
                 },
                 {
