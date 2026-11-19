@@ -7217,12 +7217,12 @@
                 },
                 {
                     "No": 8,
-                    "Joueurs": "Slavin Jaccob",
-                    "T": "CAR",
-                    "A": 32,
-                    "EXP": 0,
+                    "Joueurs": "Vlasic Alex",
+                    "T": "CHI",
+                    "A": 25,
+                    "EXP": 2,
                     "PJ": 21,
-                    "Pts": 4
+                    "Pts": 5
                 }
             ],
             "gard": [
@@ -7790,12 +7790,12 @@
             "banc_def": [
                 {
                     "No": 1,
-                    "Joueurs": "Vlasic Alex",
-                    "T": "CHI",
-                    "A": 25,
-                    "EXP": 2,
+                    "Joueurs": "Slavin Jaccob",
+                    "T": "CAR",
+                    "A": 32,
+                    "EXP": 0,
                     "PJ": 21,
-                    "Pts": 5
+                    "Pts": 4
                 },
                 {
                     "No": 2,
