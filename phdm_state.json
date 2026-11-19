@@ -361,12 +361,12 @@
                 },
                 {
                     "No": 4,
-                    "Joueurs": "Gibson John",
-                    "T": "DET",
-                    "A": 33,
+                    "Joueurs": "Wolf Dustin",
+                    "T": "CGY",
+                    "A": 25,
                     "EXP": 1,
-                    "PJ": 13,
-                    "Pts": 9
+                    "PJ": 12,
+                    "Pts": 11
                 }
             ],
             "banc_att": [
@@ -1015,12 +1015,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Wolf Dustin",
-                    "T": "CGY",
-                    "A": 25,
+                    "Joueurs": "Gibson John",
+                    "T": "DET",
+                    "A": 33,
                     "EXP": 1,
-                    "PJ": 12,
-                    "Pts": 11
+                    "PJ": 13,
+                    "Pts": 9
                 },
                 {
                     "No": 2,
