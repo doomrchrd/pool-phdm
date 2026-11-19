@@ -9653,12 +9653,12 @@
                 },
                 {
                     "No": 3,
-                    "Joueurs": "Dostal Lukas",
-                    "T": "ANA",
-                    "A": 26,
+                    "Joueurs": "Cossa Sebastian",
+                    "T": "UTA",
+                    "A": 23,
                     "EXP": 1,
-                    "PJ": 12,
-                    "Pts": 9
+                    "PJ": 9,
+                    "Pts": 11
                 }
             ],
             "banc_att": [
@@ -10307,12 +10307,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Cossa Sebastian",
-                    "T": "UTA",
-                    "A": 23,
+                    "Joueurs": "Dostal Lukas",
+                    "T": "ANA",
+                    "A": 26,
                     "EXP": 1,
-                    "PJ": 9,
-                    "Pts": 11
+                    "PJ": 12,
+                    "Pts": 9
                 },
                 {
                     "No": 2,
