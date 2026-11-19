@@ -12205,12 +12205,12 @@
                 },
                 {
                     "No": 9,
-                    "Joueurs": "McCabe Jake",
-                    "T": "TOR",
-                    "A": 33,
+                    "Joueurs": "Mailloux Logan",
+                    "T": "STL",
+                    "A": 23,
                     "EXP": 2,
-                    "PJ": 23,
-                    "Pts": 3
+                    "PJ": 4,
+                    "Pts": 4
                 }
             ],
             "gard": [
@@ -12760,12 +12760,12 @@
             "banc_def": [
                 {
                     "No": 1,
-                    "Joueurs": "Mailloux Logan",
-                    "T": "STL",
-                    "A": 23,
+                    "Joueurs": "McCabe Jake",
+                    "T": "TOR",
+                    "A": 33,
                     "EXP": 2,
-                    "PJ": 4,
-                    "Pts": 4
+                    "PJ": 23,
+                    "Pts": 3
                 },
                 {
                     "No": 2,
