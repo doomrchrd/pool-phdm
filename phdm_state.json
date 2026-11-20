@@ -1,6 +1,6 @@
 {
     "schema_version": 3,
-    "last_official_update_et": "2026-11-20 04:17",
+    "last_official_update_et": "2026-11-20 07:30",
     "rosters": {
         "dal": {
             "att": [
@@ -18750,6 +18750,15 @@
                     "Pts": 2
                 },
                 {
+                    "No": 10,
+                    "Joueurs": "Nyman Jani",
+                    "T": "SEA",
+                    "A": 22,
+                    "EXP": 2,
+                    "PJ": 4,
+                    "Pts": 0
+                },
+                {
                     "No": 2,
                     "Joueurs": "Lizotte Blake",
                     "T": "PIT",
@@ -18799,15 +18808,6 @@
                     "Joueurs": "Raty Aatu",
                     "T": "VAN",
                     "A": 24,
-                    "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 10,
-                    "Joueurs": "Nyman Jani",
-                    "T": "SEA",
-                    "A": 22,
                     "EXP": 2,
                     "PJ": 0,
                     "Pts": 0
