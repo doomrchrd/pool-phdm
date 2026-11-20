@@ -1,6 +1,6 @@
 {
     "schema_version": 3,
-    "last_official_update_et": "2026-11-20 07:30",
+    "last_official_update_et": "2026-11-20 11:13",
     "rosters": {
         "dal": {
             "att": [
@@ -23,13 +23,22 @@
                     "Pts": 12
                 },
                 {
+                    "No": 22,
+                    "Joueurs": "Sharangovich Egor",
+                    "T": "CGY",
+                    "A": 28,
+                    "EXP": 2,
+                    "PJ": 23,
+                    "Pts": 10
+                },
+                {
                     "No": 21,
                     "Joueurs": "Bjorkstrand Oliver",
                     "T": "NYR",
                     "A": 31,
                     "EXP": 2,
-                    "PJ": 22,
-                    "Pts": 11
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -189,15 +198,6 @@
                     "Joueurs": "Anderson Josh",
                     "T": "MTL",
                     "A": 32,
-                    "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 22,
-                    "Joueurs": "Sharangovich Egor",
-                    "T": "CGY",
-                    "A": 28,
                     "EXP": 2,
                     "PJ": 0,
                     "Pts": 0
@@ -371,6 +371,15 @@
             ],
             "banc_att": [
                 {
+                    "No": 2,
+                    "Joueurs": "Norris Josh",
+                    "T": "BUF",
+                    "A": 27,
+                    "EXP": 1,
+                    "PJ": 22,
+                    "Pts": 7
+                },
+                {
                     "No": 4,
                     "Joueurs": "Blueger Teodors",
                     "T": "TOR",
@@ -403,15 +412,6 @@
                     "T": "NSH",
                     "A": 32,
                     "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 2,
-                    "Joueurs": "Norris Josh",
-                    "T": "BUF",
-                    "A": 27,
-                    "EXP": 1,
                     "PJ": 0,
                     "Pts": 0
                 },
@@ -2227,8 +2227,8 @@
                     "T": "TOR",
                     "A": 32,
                     "EXP": 1,
-                    "PJ": 20,
-                    "Pts": 12
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -5006,8 +5006,8 @@
                     "T": "STL",
                     "A": 20,
                     "EXP": 1,
-                    "PJ": 17,
-                    "Pts": 3
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -7162,6 +7162,15 @@
                     "Pts": 15
                 },
                 {
+                    "No": 5,
+                    "Joueurs": "Dobson Noah",
+                    "T": "MTL",
+                    "A": 26,
+                    "EXP": 0,
+                    "PJ": 23,
+                    "Pts": 9
+                },
+                {
                     "No": 7,
                     "Joueurs": "Lindholm Hampus",
                     "T": "BOS",
@@ -7193,15 +7202,6 @@
                     "Joueurs": "Dunn Vince",
                     "T": "SEA",
                     "A": 30,
-                    "EXP": 0,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 5,
-                    "Joueurs": "Dobson Noah",
-                    "T": "MTL",
-                    "A": 26,
                     "EXP": 0,
                     "PJ": 0,
                     "Pts": 0
@@ -9351,15 +9351,6 @@
         "sea": {
             "att": [
                 {
-                    "No": 3,
-                    "Joueurs": "Benson Zach",
-                    "T": "BUF",
-                    "A": 21,
-                    "EXP": 2,
-                    "PJ": 22,
-                    "Pts": 17
-                },
-                {
                     "No": 11,
                     "Joueurs": "Barkey Denver",
                     "T": "PHI",
@@ -9385,6 +9376,15 @@
                     "EXP": 2,
                     "PJ": 23,
                     "Pts": 8
+                },
+                {
+                    "No": 3,
+                    "Joueurs": "Benson Zach",
+                    "T": "BUF",
+                    "A": 21,
+                    "EXP": 2,
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -12244,6 +12244,15 @@
             ],
             "banc_att": [
                 {
+                    "No": 3,
+                    "Joueurs": "But Daniil",
+                    "T": "UTA",
+                    "A": 21,
+                    "EXP": 1,
+                    "PJ": 18,
+                    "Pts": 4
+                },
+                {
                     "No": 12,
                     "Joueurs": "Beck Owen",
                     "T": "MTL",
@@ -12267,15 +12276,6 @@
                     "T": "NSH",
                     "A": 24,
                     "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 3,
-                    "Joueurs": "But Daniil",
-                    "T": "UTA",
-                    "A": 21,
-                    "EXP": 1,
                     "PJ": 0,
                     "Pts": 0
                 },
@@ -15088,7 +15088,7 @@
                     "T": "STL",
                     "A": 24,
                     "EXP": 0,
-                    "PJ": 3,
+                    "PJ": 0,
                     "Pts": 0
                 },
                 {
@@ -18116,6 +18116,15 @@
             ],
             "banc_def": [
                 {
+                    "No": 1,
+                    "Joueurs": "Marino John",
+                    "T": "UTA",
+                    "A": 29,
+                    "EXP": 2,
+                    "PJ": 9,
+                    "Pts": 5
+                },
+                {
                     "No": 3,
                     "Joueurs": "Schneider Braden",
                     "T": "NYR",
@@ -18132,15 +18141,6 @@
                     "EXP": 2,
                     "PJ": 6,
                     "Pts": 1
-                },
-                {
-                    "No": 1,
-                    "Joueurs": "Marino John",
-                    "T": "UTA",
-                    "A": 29,
-                    "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
                 },
                 {
                     "No": 2,
@@ -20962,15 +20962,6 @@
         "van": {
             "att": [
                 {
-                    "No": 7,
-                    "Joueurs": "Peterka J-J",
-                    "T": "BOS",
-                    "A": 24,
-                    "EXP": 0,
-                    "PJ": 22,
-                    "Pts": 15
-                },
-                {
                     "No": 14,
                     "Joueurs": "Karlsson William",
                     "T": "VGK",
@@ -20987,6 +20978,24 @@
                     "EXP": 2,
                     "PJ": 23,
                     "Pts": 7
+                },
+                {
+                    "No": 21,
+                    "Joueurs": "Beauvillier Anthony",
+                    "T": "WSH",
+                    "A": 29,
+                    "EXP": 0,
+                    "PJ": 20,
+                    "Pts": 5
+                },
+                {
+                    "No": 7,
+                    "Joueurs": "Peterka J-J",
+                    "T": "BOS",
+                    "A": 24,
+                    "EXP": 0,
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -21138,15 +21147,6 @@
                     "T": "SJS",
                     "A": 24,
                     "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 21,
-                    "Joueurs": "Beauvillier Anthony",
-                    "T": "WSH",
-                    "A": 29,
-                    "EXP": 0,
                     "PJ": 0,
                     "Pts": 0
                 },
@@ -21315,8 +21315,8 @@
                     "T": "BUF",
                     "A": 34,
                     "EXP": 2,
-                    "PJ": 13,
-                    "Pts": 2
+                    "PJ": 0,
+                    "Pts": 0
                 },
                 {
                     "No": 1,
@@ -23276,6 +23276,24 @@
         "mtl": {
             "att": [
                 {
+                    "No": 3,
+                    "Joueurs": "Stone Mark",
+                    "T": "VGK",
+                    "A": 34,
+                    "EXP": 2,
+                    "PJ": 24,
+                    "Pts": 22
+                },
+                {
+                    "No": 7,
+                    "Joueurs": "Caufield Cole",
+                    "T": "MTL",
+                    "A": 25,
+                    "EXP": 2,
+                    "PJ": 23,
+                    "Pts": 20
+                },
+                {
                     "No": 21,
                     "Joueurs": "Yamamoto Kailer",
                     "T": "UTA",
@@ -23303,15 +23321,6 @@
                     "Pts": 0
                 },
                 {
-                    "No": 3,
-                    "Joueurs": "Stone Mark",
-                    "T": "VGK",
-                    "A": 34,
-                    "EXP": 2,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
                     "No": 4,
                     "Joueurs": "Eriksson EK Joel",
                     "T": "MIN",
@@ -23335,15 +23344,6 @@
                     "T": "UTA",
                     "A": 30,
                     "EXP": 1,
-                    "PJ": 0,
-                    "Pts": 0
-                },
-                {
-                    "No": 7,
-                    "Joueurs": "Caufield Cole",
-                    "T": "MTL",
-                    "A": 25,
-                    "EXP": 2,
                     "PJ": 0,
                     "Pts": 0
                 },
