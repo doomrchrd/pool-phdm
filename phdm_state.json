@@ -1995,7 +1995,7 @@
                     "Pts": 29
                 },
                 {
-                    "No": 4,
+                    "No": 2,
                     "Joueurs": "Rantanen Mikko",
                     "T": "DAL",
                     "A": 30,
@@ -2004,7 +2004,7 @@
                     "Pts": 27
                 },
                 {
-                    "No": 2,
+                    "No": 3,
                     "Joueurs": "Marner Mitch",
                     "T": "VGK",
                     "A": 29,
@@ -2013,7 +2013,7 @@
                     "Pts": 26
                 },
                 {
-                    "No": 3,
+                    "No": 4,
                     "Joueurs": "Granlund Mikael",
                     "T": "ANA",
                     "A": 34,
@@ -2022,7 +2022,7 @@
                     "Pts": 26
                 },
                 {
-                    "No": 6,
+                    "No": 5,
                     "Joueurs": "Thompson Tage",
                     "T": "BUF",
                     "A": 29,
@@ -2031,7 +2031,7 @@
                     "Pts": 24
                 },
                 {
-                    "No": 5,
+                    "No": 6,
                     "Joueurs": "Stamkos Steven",
                     "T": "NSH",
                     "A": 36,
@@ -2049,7 +2049,7 @@
                     "Pts": 21
                 },
                 {
-                    "No": 10,
+                    "No": 8,
                     "Joueurs": "Ehlers Nikolaj",
                     "T": "CAR",
                     "A": 30,
@@ -2058,7 +2058,7 @@
                     "Pts": 21
                 },
                 {
-                    "No": 8,
+                    "No": 9,
                     "Joueurs": "Hintz Roope",
                     "T": "DAL",
                     "A": 30,
@@ -2067,7 +2067,7 @@
                     "Pts": 21
                 },
                 {
-                    "No": 9,
+                    "No": 10,
                     "Joueurs": "Horvat Bo",
                     "T": "NYI",
                     "A": 31,
@@ -2094,7 +2094,7 @@
                     "Pts": 19
                 },
                 {
-                    "No": 14,
+                    "No": 13,
                     "Joueurs": "Malkin Evgeni",
                     "T": "PIT",
                     "A": 40,
@@ -2103,7 +2103,7 @@
                     "Pts": 18
                 },
                 {
-                    "No": 13,
+                    "No": 14,
                     "Joueurs": "Lindholm Elias",
                     "T": "BOS",
                     "A": 31,
@@ -2139,7 +2139,7 @@
                     "Pts": 14
                 },
                 {
-                    "No": 19,
+                    "No": 18,
                     "Joueurs": "Crosby Sydney",
                     "T": "PIT",
                     "A": 39,
@@ -2148,7 +2148,7 @@
                     "Pts": 14
                 },
                 {
-                    "No": 18,
+                    "No": 19,
                     "Joueurs": "Trocheck Vince",
                     "T": "UTA",
                     "A": 33,
@@ -2172,6 +2172,15 @@
                     "A": 27,
                     "EXP": 2,
                     "PJ": 23,
+                    "Pts": 10
+                },
+                {
+                    "No": 22,
+                    "Joueurs": "Konecny Travis",
+                    "T": "PHI",
+                    "A": 29,
+                    "EXP": 1,
+                    "PJ": 15,
                     "Pts": 10
                 },
                 {
@@ -2200,15 +2209,6 @@
                     "EXP": 2,
                     "PJ": 14,
                     "Pts": 9
-                },
-                {
-                    "No": 22,
-                    "Joueurs": "Joseph Mathieu",
-                    "T": "EDM",
-                    "A": 29,
-                    "EXP": 2,
-                    "PJ": 24,
-                    "Pts": 8
                 }
             ],
             "def": [
@@ -2352,16 +2352,16 @@
             ],
             "banc_att": [
                 {
-                    "No": 4,
-                    "Joueurs": "Konecny Travis",
-                    "T": "PHI",
+                    "No": 1,
+                    "Joueurs": "Joseph Mathieu",
+                    "T": "EDM",
                     "A": 29,
-                    "EXP": 1,
-                    "PJ": 15,
-                    "Pts": 10
+                    "EXP": 2,
+                    "PJ": 24,
+                    "Pts": 8
                 },
                 {
-                    "No": 1,
+                    "No": 2,
                     "Joueurs": "Wilson Thomas",
                     "T": "WSH",
                     "A": 32,
@@ -2370,7 +2370,7 @@
                     "Pts": 7
                 },
                 {
-                    "No": 2,
+                    "No": 3,
                     "Joueurs": "Berggren Jonatan",
                     "T": "STL",
                     "A": 26,
@@ -2379,7 +2379,7 @@
                     "Pts": 7
                 },
                 {
-                    "No": 3,
+                    "No": 4,
                     "Joueurs": "Olivier Mathieu",
                     "T": "CBJ",
                     "A": 29,
