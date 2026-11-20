@@ -1176,7 +1176,61 @@ for yr in DRAFT_YEARS:
         init_drafts_from_excel()
         break
 for slug in SLUG_MAP.values(): enforce_roster_limits(slug)
+def _find_1_to_1_swaps_global(df_act, df_banc):
+    k = 0
+    for i in range(min(len(df_act), len(df_banc))):
+        if df_banc.iloc[i]["Pts"] > df_act.iloc[len(df_act) - 1 - i]["Pts"]:
+            k += 1
+        else:
+            break
+    if k == 0:
+        return [], []
+    cutoff_pts = df_banc.iloc[k - 1]["Pts"]
+    cands = df_banc[df_banc["Pts"] >= cutoff_pts]["Joueurs"].tolist()
+    return df_act.iloc[len(df_act) - k:]["Joueurs"].tolist(), cands[:k]
 
+if is_admin:
+    with st.sidebar:
+        st.divider()
+        if st.button("⚡ PERMUTATIONS (1 POUR 1) — TOUTES LES ÉQUIPES", use_container_width=True):
+            total_swaps = 0
+            equipes_touchees = []
+            for t_name, slg in SLUG_MAP.items():
+                swaps_team = 0
+                for pos_act, pos_banc in [("att", "banc_att"), ("def", "banc_def"), ("gard", "banc_gard")]:
+                    ka, kb = f"{slg}_df_{pos_act}", f"{slg}_df_{pos_banc}"
+                    a_df = st.session_state.get(ka, pd.DataFrame())
+                    b_df = st.session_state.get(kb, pd.DataFrame())
+                    if a_df.empty or b_df.empty:
+                        continue
+                    a_df = a_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    b_df = b_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    rl, gl = _find_1_to_1_swaps_global(a_df, b_df)
+                    if rl and gl:
+                        new_a = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_b = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                        new_a["No"] = range(1, len(new_a) + 1)
+                        new_b["No"] = range(1, len(new_b) + 1)
+                        st.session_state[ka] = new_a
+                        st.session_state[kb] = new_b
+                        swaps_team += len(rl)
+                if swaps_team > 0:
+                    total_swaps += swaps_team
+                    equipes_touchees.append(f"{TEAM_ABBR_MAP.get(t_name, t_name)} ({swaps_team})")
+
+            if total_swaps > 0:
+                save_state(push_github=True)
+                st.session_state["global_perm_feedback"] = ("success", f"✅ {total_swaps} permutation(s) appliquée(s) : {', '.join(equipes_touchees)}")
+                st.rerun()
+            else:
+                st.session_state["global_perm_feedback"] = ("info", "ℹ️ Aucune permutation (1 pour 1) à faire : toutes les équipes sont déjà optimales.")
+
+        if "global_perm_feedback" in st.session_state:
+            lvl, msg = st.session_state.pop("global_perm_feedback")
+            if lvl == "success":
+                st.success(msg)
+            else:
+                st.info(msg)
 # =========================================================
 # 5. INITIALISATION DU THÈME DYNAMIQUE DE L'ÉQUIPE
 # =========================================================
