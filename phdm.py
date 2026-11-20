@@ -108,12 +108,31 @@ SAISON = "20262027"
 GAME_TYPE = "2"
 
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_nhl_stats():
+def _fetch_nhl_stats_cached():
+    import time
     from concurrent.futures import ThreadPoolExecutor
     session = requests.Session()
     session.headers.update({"User-Agent": "Mozilla/5.0"})
     skaters, goalies = {}, {}
     today = datetime.now().date()
+
+    def get_with_retry(url, params=None, timeout=15, retries=3):
+        last_err = None
+        for attempt in range(retries):
+            try:
+                r = session.get(url, params=params, timeout=timeout)
+                if r.status_code == 200:
+                    return r
+                if r.status_code in (429, 500, 502, 503, 504):
+                    time.sleep(0.8 * (attempt + 1))
+                    continue
+                r.raise_for_status()
+            except Exception as e:
+                last_err = e
+                time.sleep(0.8 * (attempt + 1))
+        if last_err:
+            raise last_err
+        raise RuntimeError(f"Échec HTTP sur {url}")
 
     def fetch_all_pages(endpoint):
         url = f"https://api.nhle.com/stats/rest/en/{endpoint}"
@@ -125,7 +144,7 @@ def fetch_nhl_stats():
                 "sort": '[{"property":"playerId","direction":"ASC"}]',
                 "cayenneExp": f"seasonId={SAISON} and gameTypeId={GAME_TYPE}"
             }
-            r0 = session.get(url, params=params_all, timeout=20)
+            r0 = session.get(url, params=params_all, timeout=12)
             if r0.status_code == 200:
                 p0 = r0.json()
                 b0 = p0.get("data", [])
@@ -135,7 +154,7 @@ def fetch_nhl_stats():
         except Exception:
             pass
 
-        # Plan A2 : pagination par blocs de 100
+        # Plan A2 : pagination par blocs de 100 avec réessai automatique
         rows = []
         seen_ids = set()
         start = 0
@@ -148,8 +167,7 @@ def fetch_nhl_stats():
                 "sort": '[{"property":"playerId","direction":"ASC"}]',
                 "cayenneExp": f"seasonId={SAISON} and gameTypeId={GAME_TYPE}"
             }
-            r = session.get(url, params=params, timeout=15)
-            r.raise_for_status()
+            r = get_with_retry(url, params=params, timeout=15, retries=3)
             payload = r.json()
             batch = payload.get("data", [])
             if payload.get("total"):
@@ -171,7 +189,7 @@ def fetch_nhl_stats():
         return rows, (api_total or len(rows))
 
     def fetch_via_club_stats():
-        # Plan B : récupère les 32 équipes via api-web.nhle.com
+        # Plan B : récupère les 32 équipes via api-web.nhle.com (cadence modérée anti-blocage)
         sk_by_pid, g_by_pid = {}, {}
         team_abbrevs = [
             "ANA", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL",
@@ -180,32 +198,27 @@ def fetch_nhl_stats():
             "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WPG", "WSH"
         ]
         try:
-            rs = session.get("https://api-web.nhle.com/v1/standings/now", timeout=10)
-            if rs.status_code == 200:
-                st_list = rs.json().get("standings", [])
-                found = [x.get("teamAbbrev", {}).get("default") for x in st_list if x.get("teamAbbrev", {}).get("default")]
-                if len(found) >= 30:
-                    team_abbrevs = found
+            rs = get_with_retry("https://api-web.nhle.com/v1/standings/now", timeout=10, retries=2)
+            st_list = rs.json().get("standings", [])
+            found = [x.get("teamAbbrev", {}).get("default") for x in st_list if x.get("teamAbbrev", {}).get("default")]
+            if len(found) >= 30:
+                team_abbrevs = found
         except Exception:
             pass
 
         def get_team_data(tm):
             cs_data, ros_data = {}, {}
             try:
-                r1 = session.get(f"https://api-web.nhle.com/v1/club-stats/{tm}/{SAISON}/{GAME_TYPE}", timeout=12)
-                if r1.status_code == 200:
-                    cs_data = r1.json()
+                cs_data = get_with_retry(f"https://api-web.nhle.com/v1/club-stats/{tm}/{SAISON}/{GAME_TYPE}", timeout=12, retries=2).json()
             except Exception:
                 pass
             try:
-                r2 = session.get(f"https://api-web.nhle.com/v1/roster/{tm}/{SAISON}", timeout=12)
-                if r2.status_code == 200:
-                    ros_data = r2.json()
+                ros_data = get_with_retry(f"https://api-web.nhle.com/v1/roster/{tm}/{SAISON}", timeout=12, retries=2).json()
             except Exception:
                 pass
             return tm, cs_data, ros_data
 
-        with ThreadPoolExecutor(max_workers=8) as ex:
+        with ThreadPoolExecutor(max_workers=4) as ex:
             results = list(ex.map(get_team_data, team_abbrevs))
 
         age_by_pid = {}
@@ -278,8 +291,6 @@ def fetch_nhl_stats():
         return sk_out, g_out
 
     total_sk_api, total_g_api = 0, 0
-    err_msg = ""
-
     try:
         # 1. Patineurs (stats)
         sk_rows, total_sk_api = fetch_all_pages("skater/summary")
@@ -344,14 +355,14 @@ def fetch_nhl_stats():
         except Exception:
             pass
 
-    except Exception as e:
-        err_msg = str(e)
+    except Exception:
+        pass
 
     total_pat = sum(len(v) for v in skaters.values())
     total_gard = sum(len(v) for v in goalies.values())
 
-    # Sécurité anti-coupure : si <= 150 patineurs, bascule automatique sur les 32 équipes
-    if total_pat <= 150:
+    # Sécurité anti-coupure : si < 400 patineurs ou < 40 gardiens, bascule sur les 32 équipes
+    if total_pat < 400 or total_gard < 40:
         sk_b, g_b = fetch_via_club_stats()
         if sum(len(v) for v in sk_b.values()) > total_pat:
             skaters = sk_b
@@ -362,12 +373,19 @@ def fetch_nhl_stats():
             total_gard = sum(len(v) for v in goalies.values())
             total_g_api = total_gard
 
-    if total_pat == 0 and err_msg:
-        return skaters, goalies, f"Erreur API : {err_msg}"
+    # Empêche Streamlit de mettre en cache une réponse bloquée à 100 joueurs
+    if total_pat < 400 or total_gard < 40:
+        raise RuntimeError(f"Données LNH incomplètes ({total_pat} patineurs, {total_gard} gardiens)")
 
     return skaters, goalies, f"Connecté à la LNH : {total_pat}/{total_sk_api} patineurs et {total_gard}/{total_g_api} gardiens."
-nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
 
+def fetch_nhl_stats():
+    try:
+        return _fetch_nhl_stats_cached()
+    except Exception as e:
+        return {}, {}, f"⚠️ API LNH temporairement incomplète ({e}) — scores sauvegardés conservés."
+
+nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
 SPECIAL_OVERRIDE = {}
 ALIASES = {
     "vilardi gabe": "gabriel vilardi", "gabe vilardi": "gabriel vilardi",
