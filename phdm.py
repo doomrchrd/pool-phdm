@@ -23,10 +23,20 @@ MOT_DE_PASSE_SECRET = "phdm2026"  # 👈 Mot de passe secret pour PHDM
 with st.sidebar:
     st.markdown("### 🔐 Accès Direction")
     mdp_entre = st.text_input("Mot de passe commissaire :", type="password")
-    is_admin = (mdp_entre == MOT_DE_PASSE_SECRET)
+    is_admin = (mdp_entre.strip() == MOT_DE_PASSE_SECRET)
 
     if is_admin:
         st.success("🟢 Mode Commissaire Déverrouillé")
+        st.divider()
+        if st.button("⚡ PERMUTATIONS (1 POUR 1) — TOUTES LES ÉQUIPES", use_container_width=True):
+            st.session_state["trigger_global_perm"] = True
+
+        if "global_perm_feedback" in st.session_state:
+            lvl, msg = st.session_state.pop("global_perm_feedback")
+            if lvl == "success":
+                st.success(msg)
+            else:
+                st.info(msg)
     elif mdp_entre != "":
         st.error("Mot de passe incorrect")
 
@@ -144,7 +154,7 @@ def _fetch_nhl_stats_cached():
                 "sort": '[{"property":"playerId","direction":"ASC"}]',
                 "cayenneExp": f"seasonId={SAISON} and gameTypeId={GAME_TYPE}"
             }
-            r0 = session.get(url, params=params_all, timeout=12)
+            r0 = session.get(url, params=params_all, timeout=20)
             if r0.status_code == 200:
                 p0 = r0.json()
                 b0 = p0.get("data", [])
@@ -186,6 +196,8 @@ def _fetch_nhl_stats_cached():
                 break
             if len(batch) < limit and not api_total:
                 break
+        if api_total and len(rows) < api_total:
+            raise RuntimeError(f"Pagination incomplète sur {endpoint} : {len(rows)}/{api_total}")
         return rows, (api_total or len(rows))
 
     def fetch_via_club_stats():
@@ -208,21 +220,28 @@ def _fetch_nhl_stats_cached():
 
         def get_team_data(tm):
             cs_data, ros_data = {}, {}
+            ok = False
             try:
                 cs_data = get_with_retry(f"https://api-web.nhle.com/v1/club-stats/{tm}/{SAISON}/{GAME_TYPE}", timeout=12, retries=2).json()
+                if cs_data.get("skaters"):
+                    ok = True
             except Exception:
                 pass
             try:
                 ros_data = get_with_retry(f"https://api-web.nhle.com/v1/roster/{tm}/{SAISON}", timeout=12, retries=2).json()
             except Exception:
                 pass
-            return tm, cs_data, ros_data
+            return tm, cs_data, ros_data, ok
 
         with ThreadPoolExecutor(max_workers=4) as ex:
             results = list(ex.map(get_team_data, team_abbrevs))
 
+        teams_ok = sum(1 for _, _, _, ok in results if ok)
+        if teams_ok < 31:
+            return {}, {}
+
         age_by_pid = {}
-        for tm, cs_data, ros_data in results:
+        for tm, cs_data, ros_data, _ in results:
             for grp in ("forwards", "defensemen", "goalies"):
                 for rp in ros_data.get(grp, []):
                     pid = rp.get("id")
@@ -361,8 +380,13 @@ def _fetch_nhl_stats_cached():
     total_pat = sum(len(v) for v in skaters.values())
     total_gard = sum(len(v) for v in goalies.values())
 
-    # Sécurité anti-coupure : si < 400 patineurs ou < 40 gardiens, bascule sur les 32 équipes
-    if total_pat < 400 or total_gard < 40:
+    # Sécurité anti-coupure : exige l'effectif complet (784/784 patineurs, 77/77 gardiens)
+    incomplet = (
+        total_pat < 650 or total_gard < 60
+        or (total_sk_api > 0 and total_pat < total_sk_api)
+        or (total_g_api > 0 and total_gard < total_g_api)
+    )
+    if incomplet:
         sk_b, g_b = fetch_via_club_stats()
         if sum(len(v) for v in sk_b.values()) > total_pat:
             skaters = sk_b
@@ -373,9 +397,9 @@ def _fetch_nhl_stats_cached():
             total_gard = sum(len(v) for v in goalies.values())
             total_g_api = total_gard
 
-    # Empêche Streamlit de mettre en cache une réponse bloquée à 100 joueurs
-    if total_pat < 400 or total_gard < 40:
-        raise RuntimeError(f"Données LNH incomplètes ({total_pat} patineurs, {total_gard} gardiens)")
+    # Empêche Streamlit de mettre en cache une réponse incomplète (ex: 100/784)
+    if total_pat < 650 or total_gard < 60 or (total_sk_api > 0 and total_pat < total_sk_api) or (total_g_api > 0 and total_gard < total_g_api):
+        raise RuntimeError(f"Données LNH incomplètes ({total_pat}/{total_sk_api} patineurs, {total_gard}/{total_g_api} gardiens)")
 
     return skaters, goalies, f"Connecté à la LNH : {total_pat}/{total_sk_api} patineurs et {total_gard}/{total_g_api} gardiens."
 
@@ -421,12 +445,14 @@ ALIASES = {
     "luukkonen u k": "ukko pekka luukkonen", "lekkerimaki jonat": "jonathan lekkerimaki", "stutzle tim": "tim stuetzle"
 }
 
-def get_player_live_stats(nom_excel, team_defaut, age_defaut, pos_cat):
+def get_player_live_stats(nom_excel, team_defaut, age_defaut, pos_cat, pj_defaut=0, pts_defaut=0):
     nom_clean = clean_str(nom_excel)
     if nom_clean in SPECIAL_OVERRIDE:
         return (SPECIAL_OVERRIDE[nom_clean]["team"] or team_defaut), SPECIAL_OVERRIDE[nom_clean].get("age", age_defaut), SPECIAL_OVERRIDE[nom_clean]["pj"], SPECIAL_OVERRIDE[nom_clean]["pts"]
     is_goalie = (pos_cat == "GARD")
     db = nhl_goalies if is_goalie else nhl_skaters
+    if not db:
+        return team_defaut, age_defaut, pj_defaut, pts_defaut
     def pick_best(plist):
         if not plist: return None
         if len(plist) == 1: return plist[0]
@@ -865,9 +891,9 @@ def save_state(official_api_updated=False, push_github=False):
     if push_github:
         ok, msg = sync_state_to_github(state_data)
         if ok:
-            st.toast("☁️ Sauvegardé automatiquement sur GitHub !")
-        elif msg not in ("Secrets non configurés", "Token ou Repo manquant"):
-            st.toast(f"⚠️ GitHub : {msg}")
+            st.toast("☁️ phdm_state.json sauvegardé sur GitHub !")
+        else:
+            st.warning(f"⚠️ Sauvegarde locale uniquement (non envoyée sur GitHub : {msg}). Vérifiez GITHUB_TOKEN et GITHUB_REPO dans les Secrets Streamlit.")
 
 def load_state():
     if not os.path.exists(DATA_FILE): return False
@@ -1186,7 +1212,8 @@ if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_st
     init_drafts_from_excel()
     if "app_trade_history" not in st.session_state:
         st.session_state["app_trade_history"] = []
-    save_state(official_api_updated=True)
+    api_ok_init = sum(len(v) for v in nhl_skaters.values()) >= 650 and sum(len(v) for v in nhl_goalies.values()) >= 60
+    save_state(official_api_updated=api_ok_init)
 
 if "df_all_recrues" not in st.session_state: init_recrues_from_csv()
 for yr in DRAFT_YEARS:
@@ -1194,6 +1221,25 @@ for yr in DRAFT_YEARS:
         init_drafts_from_excel()
         break
 for slug in SLUG_MAP.values(): enforce_roster_limits(slug)
+
+# Auto-réparation si phdm_state.json chargé depuis GitHub a perdu ses points (total à 0)
+total_ligue_pts = sum(
+    int(st.session_state.get(f"{slg}_df_{r}", pd.DataFrame([{"Pts": 0}]))["Pts"].sum())
+    for slg in SLUG_MAP.values()
+    for r in ("att", "def", "gard")
+)
+if total_ligue_pts == 0 and sum(len(v) for v in nhl_skaters.values()) >= 650 and sum(len(v) for v in nhl_goalies.values()) >= 60:
+    for slg in SLUG_MAP.values():
+        for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
+            if f"{slg}_df_{role}" in st.session_state:
+                cur_df = st.session_state[f"{slg}_df_{role}"]
+                for idx_p, row_p in cur_df.iterrows():
+                    t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
+                    cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
+                st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+        enforce_roster_limits(slg)
+    save_state(official_api_updated=True, push_github=True)
+
 def _find_1_to_1_swaps_global(df_act, df_banc):
     k = 0
     for i in range(min(len(df_act), len(df_banc))):
@@ -1207,48 +1253,39 @@ def _find_1_to_1_swaps_global(df_act, df_banc):
     cands = df_banc[df_banc["Pts"] >= cutoff_pts]["Joueurs"].tolist()
     return df_act.iloc[len(df_act) - k:]["Joueurs"].tolist(), cands[:k]
 
-if is_admin:
-    with st.sidebar:
-        st.divider()
-        if st.button("⚡ PERMUTATIONS (1 POUR 1) — TOUTES LES ÉQUIPES", use_container_width=True):
-            total_swaps = 0
-            equipes_touchees = []
-            for t_name, slg in SLUG_MAP.items():
-                swaps_team = 0
-                for pos_act, pos_banc in [("att", "banc_att"), ("def", "banc_def"), ("gard", "banc_gard")]:
-                    ka, kb = f"{slg}_df_{pos_act}", f"{slg}_df_{pos_banc}"
-                    a_df = st.session_state.get(ka, pd.DataFrame())
-                    b_df = st.session_state.get(kb, pd.DataFrame())
-                    if a_df.empty or b_df.empty:
-                        continue
-                    a_df = a_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    b_df = b_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                    rl, gl = _find_1_to_1_swaps_global(a_df, b_df)
-                    if rl and gl:
-                        new_a = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_b = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                        new_a["No"] = range(1, len(new_a) + 1)
-                        new_b["No"] = range(1, len(new_b) + 1)
-                        st.session_state[ka] = new_a
-                        st.session_state[kb] = new_b
-                        swaps_team += len(rl)
-                if swaps_team > 0:
-                    total_swaps += swaps_team
-                    equipes_touchees.append(f"{TEAM_ABBR_MAP.get(t_name, t_name)} ({swaps_team})")
+if is_admin and st.session_state.pop("trigger_global_perm", False):
+    total_swaps = 0
+    equipes_touchees = []
+    for t_name, slg in SLUG_MAP.items():
+        swaps_team = 0
+        for pos_act, pos_banc in [("att", "banc_att"), ("def", "banc_def"), ("gard", "banc_gard")]:
+            ka, kb = f"{slg}_df_{pos_act}", f"{slg}_df_{pos_banc}"
+            a_df = st.session_state.get(ka, pd.DataFrame())
+            b_df = st.session_state.get(kb, pd.DataFrame())
+            if a_df.empty or b_df.empty:
+                continue
+            a_df = a_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+            b_df = b_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+            rl, gl = _find_1_to_1_swaps_global(a_df, b_df)
+            if rl and gl:
+                new_a = pd.concat([a_df[~a_df["Joueurs"].isin(rl)], b_df[b_df["Joueurs"].isin(gl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                new_b = pd.concat([b_df[~b_df["Joueurs"].isin(gl)], a_df[a_df["Joueurs"].isin(rl)]]).sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                new_a["No"] = range(1, len(new_a) + 1)
+                new_b["No"] = range(1, len(new_b) + 1)
+                st.session_state[ka] = new_a
+                st.session_state[kb] = new_b
+                swaps_team += len(rl)
+        if swaps_team > 0:
+            total_swaps += swaps_team
+            equipes_touchees.append(f"{TEAM_ABBR_MAP.get(t_name, t_name)} ({swaps_team})")
 
-            if total_swaps > 0:
-                save_state(push_github=True)
-                st.session_state["global_perm_feedback"] = ("success", f"✅ {total_swaps} permutation(s) appliquée(s) : {', '.join(equipes_touchees)}")
-                st.rerun()
-            else:
-                st.session_state["global_perm_feedback"] = ("info", "ℹ️ Aucune permutation (1 pour 1) à faire : toutes les équipes sont déjà optimales.")
+    if total_swaps > 0:
+        save_state(push_github=True)
+        st.session_state["global_perm_feedback"] = ("success", f"✅ {total_swaps} permutation(s) appliquée(s) : {', '.join(equipes_touchees)}")
+    else:
+        st.session_state["global_perm_feedback"] = ("info", "ℹ️ Aucune permutation (1 pour 1) à faire : toutes les équipes sont déjà optimales.")
+    st.rerun()
 
-        if "global_perm_feedback" in st.session_state:
-            lvl, msg = st.session_state.pop("global_perm_feedback")
-            if lvl == "success":
-                st.success(msg)
-            else:
-                st.info(msg)
 # =========================================================
 # 5. INITIALISATION DU THÈME DYNAMIQUE DE L'ÉQUIPE
 # =========================================================
@@ -1387,7 +1424,7 @@ tab_equipes, tab_transactions, tab_reglements, tab_repechage, tab_recrues, tab_d
 ])
 
 # =========================================================
-# ONGLET 1 : ÉQUIPES & PRIX (INCHANGÉ VISUELLEMENT)
+# ONGLET 1 : ÉQUIPES & PRIX
 # =========================================================
 with tab_equipes:
     top_gauche, top_droite = st.columns([1.1, 1.9], vertical_alignment="top")
@@ -1553,20 +1590,27 @@ with tab_equipes:
         if is_admin:
             if st.button("🔄 ACTUALISER API", use_container_width=True):
                 st.cache_data.clear()
-                nhl_skaters_new, nhl_goalies_new, _ = fetch_nhl_stats()
-                globals()["nhl_skaters"] = nhl_skaters_new
-                globals()["nhl_goalies"] = nhl_goalies_new
-                for slg in SLUG_MAP.values():
-                    for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
-                        if f"{slg}_df_{role}" in st.session_state:
-                            cur_df = st.session_state[f"{slg}_df_{role}"]
-                            for idx_p, row_p in cur_df.iterrows():
-                                t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat)
-                                cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
-                            st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
-                for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state(official_api_updated=True, push_github=True)
-                st.rerun()
+                nhl_skaters_new, nhl_goalies_new, status_new = fetch_nhl_stats()
+                nb_sk = sum(len(v) for v in nhl_skaters_new.values())
+                nb_g = sum(len(v) for v in nhl_goalies_new.values())
+                if nb_sk < 650 or nb_g < 60:
+                    st.error(f"❌ Actualisation annulée ({status_new}). Vos points actuels ont été conservés.")
+                else:
+                    globals()["nhl_skaters"] = nhl_skaters_new
+                    globals()["nhl_goalies"] = nhl_goalies_new
+                    for slg in SLUG_MAP.values():
+                        for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
+                            if f"{slg}_df_{role}" in st.session_state:
+                                cur_df = st.session_state[f"{slg}_df_{role}"]
+                                for idx_p, row_p in cur_df.iterrows():
+                                    old_pj = int(row_p.get("PJ", 0) or 0)
+                                    old_pts = int(row_p.get("Pts", 0) or 0)
+                                    t_r, age_r, pj_r, pts_r = get_player_live_stats(row_p["Joueurs"], row_p["T"], row_p.get("A", 0), pos_cat, pj_defaut=old_pj, pts_defaut=old_pts)
+                                    cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
+                                st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
+                    for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+                    save_state(official_api_updated=True, push_github=True)
+                    st.rerun()
         else:
             st.button("🔄 ACTUALISER API", use_container_width=True, disabled=True, help="🔒 Réservé au commissaire.")
 
@@ -1579,7 +1623,8 @@ with tab_equipes:
                 st.session_state["app_trade_history"] = []
                 st.session_state["last_trade_backup"] = None
                 for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
-                save_state(official_api_updated=True, push_github=True)
+                api_ok_reload = sum(len(v) for v in nhl_skaters.values()) >= 650 and sum(len(v) for v in nhl_goalies.values()) >= 60
+                save_state(official_api_updated=api_ok_reload, push_github=True)
                 st.success("✅ Base de données rechargée avec succès !")
                 st.rerun()
         else:
@@ -2145,7 +2190,7 @@ with tab_recrues:
         if filtre != "Toutes les recrues":
             df_show = df_show[df_show["Équipe LNH (Réelle)"] == filtre]
             logo, color = get_nhl_team_branding(filtre)
-            st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(30,41,59,0.7);backdrop-filter(blur(10px));padding:12px;border-left:8px solid {color};border-radius:12px;margin:10px 0 15px;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><img src="{logo}" width="55" style="margin-right: 20px; filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));"><div><h3 style="margin: 0; color: #F8FAFC; text-transform: uppercase; font-weight:900;">{filtre}</h3><div style="color: {t['primary']}; font-weight:700; font-size: 0.9rem; letter-spacing:1px;">ESPOIRS REPÊCHÉS ({len(df_show)} JOUEURS)</div></div></div>''', unsafe_allow_html=True)
+            st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(30,41,59,0.7);backdrop-filter:blur(10px);padding:12px;border-left:8px solid {color};border-radius:12px;margin:10px 0 15px;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><img src="{logo}" width="55" style="margin-right: 20px; filter: drop-shadow(0px 0px 5px rgba(255,255,255,0.2));"><div><h3 style="margin: 0; color: #F8FAFC; text-transform: uppercase; font-weight:900;">{filtre}</h3><div style="color: {t['primary']}; font-weight:700; font-size: 0.9rem; letter-spacing:1px;">ESPOIRS REPÊCHÉS ({len(df_show)} JOUEURS)</div></div></div>''', unsafe_allow_html=True)
             st.dataframe(df_show.style.apply(lambda r: ['background-color: transparent; color: #F8FAFC'] * len(r), axis=1), hide_index=True, use_container_width=True, height=650, column_config=CONF_REC)
         else:
             st.markdown(f"<h3 style='color:{t['primary']}; font-weight:900;'>TOUTES LES RECRUES ({len(df_show)} joueurs)</h3>", unsafe_allow_html=True)
@@ -2156,7 +2201,6 @@ with tab_recrues:
                 st.markdown(f'''<div style="display:flex;align-items:center;background:rgba(15,23,42,0.6);padding:10px 15px;border-left:6px solid {color};border-radius:8px;margin:30px 0 10px;box-shadow:0 2px 10px rgba(0,0,0,0.2);"><img src="{logo}" width="40" style="margin-right: 15px; filter: drop-shadow(0px 0px 3px rgba(255,255,255,0.1));"><h4 style="margin: 0; color: #F8FAFC; font-weight:800; text-transform: uppercase; letter-spacing:1px;">{eq} <span style="color:{t['primary']}; font-size:0.9rem;">({len(df_eq)})</span></h4></div>''', unsafe_allow_html=True)
                 st.dataframe(df_eq.style.apply(lambda r: ['background-color: transparent; color: #E2E8F0'] * len(r), axis=1), hide_index=True, use_container_width=True, column_config=CONF_REC)
 
-# =========================================================
 # =========================================================
 # ONGLET 6 : DIRECT DE LA JOURNÉE (STATISTIQUES NON OFFICIELLES)
 # =========================================================
@@ -2455,7 +2499,6 @@ def render_tab_direct():
                     skaters_by_pid[pid]["but"] = max(skaters_by_pid[pid]["but"], g_cnt)
                     skaters_by_pid[pid]["assiste"] = max(skaters_by_pid[pid]["assiste"], a_cnt)
                 elif pid:
-                    # Au cas où /landing n'avait pas encore ce joueur, on récupérera son nom complet via /player/{pid}/landing
                     skaters_by_pid[pid] = {"pid": pid, "first_raw": "", "last_raw": _nhl_txt(sk.get("name")), "team": team_ab, "but": g_cnt, "assiste": a_cnt, "_need_name": True}
 
         # 3. Gardiens pour matchs terminés
@@ -2481,7 +2524,6 @@ def render_tab_direct():
                             "is_last_played": (gl == played[-1]), "nb_played": len(played)
                         })
 
-    # Complète les rares noms manquants si /boxscore a devancé /landing
     missing_name_pids = tuple(v["pid"] for v in skaters_by_pid.values() if v.get("_need_name") and v.get("pid"))
     all_pid_lookups = tuple(set(goalie_pids_to_check) | set(missing_name_pids))
     player_landings = fetch_goalies_landing_parallel(all_pid_lookups)
