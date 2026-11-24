@@ -12348,7 +12348,7 @@
             ],
             "def": [
                 {
-                    "No": 2,
+                    "No": 1,
                     "Joueurs": "Sanderson Jake",
                     "T": "OTT",
                     "A": 24,
@@ -12357,7 +12357,7 @@
                     "Pts": 13
                 },
                 {
-                    "No": 3,
+                    "No": 2,
                     "Joueurs": "Nemec Simon",
                     "T": "CGY",
                     "A": 22,
@@ -12366,7 +12366,7 @@
                     "Pts": 11
                 },
                 {
-                    "No": 4,
+                    "No": 3,
                     "Joueurs": "Gustafsson Erik",
                     "T": "LAK",
                     "A": 34,
@@ -12375,7 +12375,7 @@
                     "Pts": 9
                 },
                 {
-                    "No": 5,
+                    "No": 4,
                     "Joueurs": "Miller K'Andre",
                     "T": "CAR",
                     "A": 26,
@@ -12384,7 +12384,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 6,
+                    "No": 5,
                     "Joueurs": "Mailloux Logan",
                     "T": "STL",
                     "A": 23,
@@ -12393,7 +12393,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 7,
+                    "No": 6,
                     "Joueurs": "Zellweger Olen",
                     "T": "BUF",
                     "A": 23,
@@ -12402,7 +12402,16 @@
                     "Pts": 7
                 },
                 {
-                    "No": 1,
+                    "No": 7,
+                    "Joueurs": "McCabe Jake",
+                    "T": "TOR",
+                    "A": 33,
+                    "EXP": 2,
+                    "PJ": 26,
+                    "Pts": 6
+                },
+                {
+                    "No": 8,
                     "Joueurs": "Mikkola Niko",
                     "T": "FLA",
                     "A": 30,
@@ -12411,22 +12420,13 @@
                     "Pts": 5
                 },
                 {
-                    "No": 8,
+                    "No": 9,
                     "Joueurs": "Pettersson Marcus",
                     "T": "NYR",
                     "A": 30,
                     "EXP": 2,
                     "PJ": 23,
                     "Pts": 5
-                },
-                {
-                    "No": 9,
-                    "Joueurs": "Dickinson Sam",
-                    "T": "SJS",
-                    "A": 20,
-                    "EXP": 1,
-                    "PJ": 24,
-                    "Pts": 4
                 }
             ],
             "gard": [
@@ -12975,16 +12975,16 @@
             ],
             "banc_def": [
                 {
-                    "No": 2,
-                    "Joueurs": "McCabe Jake",
-                    "T": "TOR",
-                    "A": 33,
-                    "EXP": 2,
-                    "PJ": 26,
-                    "Pts": 6
+                    "No": 1,
+                    "Joueurs": "Dickinson Sam",
+                    "T": "SJS",
+                    "A": 20,
+                    "EXP": 1,
+                    "PJ": 24,
+                    "Pts": 4
                 },
                 {
-                    "No": 1,
+                    "No": 2,
                     "Joueurs": "Johansson Albert",
                     "T": "DET",
                     "A": 25,
