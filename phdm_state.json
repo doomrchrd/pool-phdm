@@ -1,6 +1,6 @@
 {
     "schema_version": 3,
-    "last_official_update_et": "2026-11-24 18:27",
+    "last_official_update_et": "2026-11-25 06:56",
     "rosters": {
         "dal": {
             "att": [
@@ -10,7 +10,7 @@
                     "T": "EDM",
                     "A": 31,
                     "EXP": 1,
-                    "PJ": 26,
+                    "PJ": 27,
                     "Pts": 47
                 },
                 {
@@ -19,8 +19,8 @@
                     "T": "VGK",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 25,
-                    "Pts": 31
+                    "PJ": 26,
+                    "Pts": 33
                 },
                 {
                     "No": 6,
@@ -118,7 +118,7 @@
                     "T": "VGK",
                     "A": 33,
                     "EXP": 1,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 20
                 },
                 {
@@ -127,8 +127,8 @@
                     "T": "VGK",
                     "A": 20,
                     "EXP": 2,
-                    "PJ": 25,
-                    "Pts": 16
+                    "PJ": 26,
+                    "Pts": 19
                 },
                 {
                     "No": 18,
@@ -237,8 +237,8 @@
                     "T": "EDM",
                     "A": 27,
                     "EXP": 2,
-                    "PJ": 26,
-                    "Pts": 39
+                    "PJ": 27,
+                    "Pts": 41
                 },
                 {
                     "No": 3,
@@ -300,7 +300,7 @@
                     "T": "VGK",
                     "A": 35,
                     "EXP": 2,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 9
                 },
                 {
@@ -1995,6 +1995,15 @@
                     "Pts": 33
                 },
                 {
+                    "No": 6,
+                    "Joueurs": "Marner Mitch",
+                    "T": "VGK",
+                    "A": 29,
+                    "EXP": 1,
+                    "PJ": 24,
+                    "Pts": 29
+                },
+                {
                     "No": 4,
                     "Joueurs": "Thompson Tage",
                     "T": "BUF",
@@ -2011,15 +2020,6 @@
                     "EXP": 1,
                     "PJ": 23,
                     "Pts": 28
-                },
-                {
-                    "No": 6,
-                    "Joueurs": "Marner Mitch",
-                    "T": "VGK",
-                    "A": 29,
-                    "EXP": 1,
-                    "PJ": 23,
-                    "Pts": 27
                 },
                 {
                     "No": 7,
@@ -2117,7 +2117,7 @@
                     "T": "VGK",
                     "A": 30,
                     "EXP": 1,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 17
                 },
                 {
@@ -2157,6 +2157,15 @@
                     "Pts": 15
                 },
                 {
+                    "No": 21,
+                    "Joueurs": "Joseph Mathieu",
+                    "T": "EDM",
+                    "A": 29,
+                    "EXP": 2,
+                    "PJ": 27,
+                    "Pts": 11
+                },
+                {
                     "No": 20,
                     "Joueurs": "Konecny Travis",
                     "T": "PHI",
@@ -2164,15 +2173,6 @@
                     "EXP": 1,
                     "PJ": 16,
                     "Pts": 11
-                },
-                {
-                    "No": 21,
-                    "Joueurs": "Joseph Mathieu",
-                    "T": "EDM",
-                    "A": 29,
-                    "EXP": 2,
-                    "PJ": 26,
-                    "Pts": 10
                 },
                 {
                     "No": 22,
@@ -2299,7 +2299,7 @@
                     "T": "VGK",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 7
                 },
                 {
@@ -6967,8 +6967,8 @@
                     "T": "EDM",
                     "A": 29,
                     "EXP": 2,
-                    "PJ": 26,
-                    "Pts": 58
+                    "PJ": 27,
+                    "Pts": 59
                 },
                 {
                     "No": 6,
@@ -7030,8 +7030,8 @@
                     "T": "EDM",
                     "A": 30,
                     "EXP": 2,
-                    "PJ": 26,
-                    "Pts": 15
+                    "PJ": 27,
+                    "Pts": 16
                 },
                 {
                     "No": 12,
@@ -7088,6 +7088,15 @@
                     "Pts": 13
                 },
                 {
+                    "No": 3,
+                    "Joueurs": "Olofsson Victor",
+                    "T": "VGK",
+                    "A": 31,
+                    "EXP": 2,
+                    "PJ": 13,
+                    "Pts": 13
+                },
+                {
                     "No": 17,
                     "Joueurs": "Martinook Jordan",
                     "T": "CAR",
@@ -7103,15 +7112,6 @@
                     "A": 25,
                     "EXP": 1,
                     "PJ": 21,
-                    "Pts": 12
-                },
-                {
-                    "No": 3,
-                    "Joueurs": "Olofsson Victor",
-                    "T": "VGK",
-                    "A": 31,
-                    "EXP": 2,
-                    "PJ": 12,
                     "Pts": 12
                 },
                 {
@@ -7223,7 +7223,7 @@
                     "T": "EDM",
                     "A": 24,
                     "EXP": 2,
-                    "PJ": 13,
+                    "PJ": 14,
                     "Pts": 21
                 },
                 {
@@ -7241,7 +7241,7 @@
                     "T": "VGK",
                     "A": 30,
                     "EXP": 1,
-                    "PJ": 12,
+                    "PJ": 13,
                     "Pts": 17
                 }
             ],
@@ -7387,7 +7387,7 @@
                     "T": "EDM",
                     "A": 28,
                     "EXP": 0,
-                    "PJ": 23,
+                    "PJ": 24,
                     "Pts": 1
                 },
                 {
@@ -7976,14 +7976,14 @@
                     "T": "VGK",
                     "A": 28,
                     "EXP": 0,
-                    "PJ": 13,
-                    "Pts": 16
+                    "PJ": 14,
+                    "Pts": 18
                 },
                 {
                     "No": 2,
                     "Joueurs": "Grubauer Philipp",
                     "T": "SEA",
-                    "A": 34,
+                    "A": 35,
                     "EXP": 0,
                     "PJ": 14,
                     "Pts": 13
@@ -12306,7 +12306,7 @@
                     "T": "VGK",
                     "A": 23,
                     "EXP": 0,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 9
                 },
                 {
@@ -14992,8 +14992,8 @@
                     "T": "EDM",
                     "A": 25,
                     "EXP": 1,
-                    "PJ": 26,
-                    "Pts": 22
+                    "PJ": 27,
+                    "Pts": 23
                 },
                 {
                     "No": 6,
@@ -15100,7 +15100,7 @@
                     "T": "VGK",
                     "A": 28,
                     "EXP": 2,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 12
                 },
                 {
@@ -15190,7 +15190,7 @@
                     "No": 4,
                     "Joueurs": "Mintyukov Pavel",
                     "T": "ANA",
-                    "A": 22,
+                    "A": 23,
                     "EXP": 1,
                     "PJ": 21,
                     "Pts": 8
@@ -15380,12 +15380,21 @@
                     "Pts": 5
                 },
                 {
+                    "No": 4,
+                    "Joueurs": "Dowd Nic",
+                    "T": "VGK",
+                    "A": 36,
+                    "EXP": 2,
+                    "PJ": 26,
+                    "Pts": 4
+                },
+                {
                     "No": 17,
                     "Joueurs": "Hallander Filip",
                     "T": "PIT,EDM",
                     "A": 26,
                     "EXP": 0,
-                    "PJ": 16,
+                    "PJ": 17,
                     "Pts": 4
                 },
                 {
@@ -15396,15 +15405,6 @@
                     "EXP": 0,
                     "PJ": 9,
                     "Pts": 4
-                },
-                {
-                    "No": 4,
-                    "Joueurs": "Dowd Nic",
-                    "T": "VGK",
-                    "A": 36,
-                    "EXP": 2,
-                    "PJ": 25,
-                    "Pts": 3
                 },
                 {
                     "No": 19,
@@ -15864,7 +15864,7 @@
                     "T": "EDM",
                     "A": 30,
                     "EXP": 1,
-                    "PJ": 12,
+                    "PJ": 13,
                     "Pts": 1
                 },
                 {
@@ -17699,7 +17699,7 @@
                     "T": "EDM",
                     "A": 33,
                     "EXP": 2,
-                    "PJ": 12,
+                    "PJ": 13,
                     "Pts": 11
                 },
                 {
@@ -21451,6 +21451,15 @@
                     "Pts": 13
                 },
                 {
+                    "No": 2,
+                    "Joueurs": "Karlsson William",
+                    "T": "VGK",
+                    "A": 33,
+                    "EXP": 2,
+                    "PJ": 26,
+                    "Pts": 12
+                },
+                {
                     "No": 14,
                     "Joueurs": "Gaudreau Fred",
                     "T": "SEA",
@@ -21458,15 +21467,6 @@
                     "EXP": 2,
                     "PJ": 21,
                     "Pts": 12
-                },
-                {
-                    "No": 2,
-                    "Joueurs": "Karlsson William",
-                    "T": "VGK",
-                    "A": 33,
-                    "EXP": 2,
-                    "PJ": 25,
-                    "Pts": 11
                 },
                 {
                     "No": 15,
@@ -21505,6 +21505,15 @@
                     "Pts": 8
                 },
                 {
+                    "No": 20,
+                    "Joueurs": "Dach Colton",
+                    "T": "EDM",
+                    "A": 23,
+                    "EXP": 2,
+                    "PJ": 21,
+                    "Pts": 8
+                },
+                {
                     "No": 18,
                     "Joueurs": "Teravainen Teuvo",
                     "T": "CHI",
@@ -21521,15 +21530,6 @@
                     "EXP": 2,
                     "PJ": 16,
                     "Pts": 8
-                },
-                {
-                    "No": 20,
-                    "Joueurs": "Dach Colton",
-                    "T": "EDM",
-                    "A": 23,
-                    "EXP": 2,
-                    "PJ": 20,
-                    "Pts": 7
                 },
                 {
                     "No": 21,
@@ -21606,6 +21606,15 @@
                     "Pts": 13
                 },
                 {
+                    "No": 2,
+                    "Joueurs": "Theodore Shea",
+                    "T": "VGK",
+                    "A": 31,
+                    "EXP": 1,
+                    "PJ": 26,
+                    "Pts": 8
+                },
+                {
                     "No": 9,
                     "Joueurs": "Ekblad Aaron",
                     "T": "FLA",
@@ -21621,15 +21630,6 @@
                     "A": 20,
                     "EXP": 1,
                     "PJ": 26,
-                    "Pts": 7
-                },
-                {
-                    "No": 2,
-                    "Joueurs": "Theodore Shea",
-                    "T": "VGK",
-                    "A": 31,
-                    "EXP": 1,
-                    "PJ": 25,
                     "Pts": 7
                 },
                 {
@@ -22112,7 +22112,7 @@
                     "T": "EDM",
                     "A": 24,
                     "EXP": 2,
-                    "PJ": 21,
+                    "PJ": 22,
                     "Pts": 2
                 },
                 {
@@ -24178,7 +24178,7 @@
                     "T": "VGK",
                     "A": 34,
                     "EXP": 2,
-                    "PJ": 25,
+                    "PJ": 26,
                     "Pts": 23
                 },
                 {
@@ -24396,7 +24396,7 @@
                     "T": "EDM",
                     "A": 36,
                     "EXP": 1,
-                    "PJ": 24,
+                    "PJ": 25,
                     "Pts": 11
                 },
                 {
@@ -24982,6 +24982,15 @@
             ],
             "banc_def": [
                 {
+                    "No": 5,
+                    "Joueurs": "Shea Ryan",
+                    "T": "EDM",
+                    "A": 29,
+                    "EXP": 0,
+                    "PJ": 27,
+                    "Pts": 8
+                },
+                {
                     "No": 1,
                     "Joueurs": "Skjei Brady",
                     "T": "NSH",
@@ -25007,15 +25016,6 @@
                     "EXP": 1,
                     "PJ": 11,
                     "Pts": 8
-                },
-                {
-                    "No": 5,
-                    "Joueurs": "Shea Ryan",
-                    "T": "EDM",
-                    "A": 29,
-                    "EXP": 0,
-                    "PJ": 26,
-                    "Pts": 7
                 },
                 {
                     "No": 6,
