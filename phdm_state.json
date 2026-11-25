@@ -7228,20 +7228,20 @@
                 },
                 {
                     "No": 2,
+                    "Joueurs": "Hart Carter",
+                    "T": "VGK",
+                    "A": 28,
+                    "EXP": 0,
+                    "PJ": 14,
+                    "Pts": 18
+                },
+                {
+                    "No": 3,
                     "Joueurs": "Luukkonen U-K",
                     "T": "BUF",
                     "A": 27,
                     "EXP": 2,
                     "PJ": 14,
-                    "Pts": 17
-                },
-                {
-                    "No": 3,
-                    "Joueurs": "Hill Adin",
-                    "T": "VGK",
-                    "A": 30,
-                    "EXP": 1,
-                    "PJ": 13,
                     "Pts": 17
                 }
             ],
@@ -7972,12 +7972,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Hart Carter",
+                    "Joueurs": "Hill Adin",
                     "T": "VGK",
-                    "A": 28,
-                    "EXP": 0,
-                    "PJ": 14,
-                    "Pts": 18
+                    "A": 30,
+                    "EXP": 1,
+                    "PJ": 13,
+                    "Pts": 17
                 },
                 {
                     "No": 2,
