@@ -158,8 +158,8 @@ def _fetch_nhl_stats_cached():
             if r0.status_code == 200:
                 p0 = r0.json()
                 b0 = p0.get("data", [])
-                t0 = p0.get("total") or len(b0)
-                if b0 and len(b0) >= t0 and (len(b0) > 100 or "goalie" in endpoint):
+                t0 = p0.get("total")
+                if b0 and t0 and len(b0) >= t0 and (len(b0) > 100 or (len(b0) >= 60 and "goalie" in endpoint)):
                     return b0, t0
         except Exception:
             pass
@@ -409,7 +409,8 @@ def fetch_nhl_stats():
     except Exception as e:
         return {}, {}, f"⚠️ API LNH temporairement incomplète ({e}) — scores sauvegardés conservés."
 
-nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
+nhl_skaters, nhl_goalies = {}, {}
+api_status = "⏸️ Temps réel OFF au démarrage — Scores officiels sauvegardés conservés."
 SPECIAL_OVERRIDE = {}
 ALIASES = {
     "vilardi gabe": "gabriel vilardi", "gabe vilardi": "gabriel vilardi",
@@ -478,7 +479,7 @@ def get_player_live_stats(nom_excel, team_defaut, age_defaut, pos_cat, pj_defaut
         if n3 in db:
             match = pick_best(db[n3])
             if match: return match["team"] or team_defaut, match.get("age") or age_defaut, match["pj"], match["pts"]
-    return team_defaut, age_defaut, 0, 0
+    return team_defaut, age_defaut, pj_defaut, pts_defaut
 
 # =========================================================
 # 3. ÉQUIPES & DIRECTEURS GÉNÉRAUX (PHDM)
@@ -1201,12 +1202,12 @@ def undo_last_trade():
     st.session_state["last_trade_backup"] = None
     save_state(push_github=True)
     return True
-
 # =========================================================
 # INITIALISATION DES DONNÉES
 # =========================================================
 data_loaded = load_state()
 if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_state or st.session_state[f"{SLUG_MAP['Dallas Stars']}_df_att"].empty):
+    nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
     init_rosters_from_csv()
     init_recrues_from_csv()
     init_drafts_from_excel()
@@ -1214,6 +1215,10 @@ if not data_loaded or (f"{SLUG_MAP['Dallas Stars']}_df_att" not in st.session_st
         st.session_state["app_trade_history"] = []
     api_ok_init = sum(len(v) for v in nhl_skaters.values()) >= 650 and sum(len(v) for v in nhl_goalies.values()) >= 60
     save_state(official_api_updated=api_ok_init)
+else:
+    last_maj_saved = st.session_state.get("last_official_update_et", "")
+    if last_maj_saved:
+        api_status = f"Scores officiels verrouillés (Dernière MAJ : {last_maj_saved} HE) — Aucun appel auto."
 
 if "df_all_recrues" not in st.session_state: init_recrues_from_csv()
 for yr in DRAFT_YEARS:
@@ -1228,6 +1233,8 @@ total_ligue_pts = sum(
     for slg in SLUG_MAP.values()
     for r in ("att", "def", "gard")
 )
+if total_ligue_pts == 0:
+    nhl_skaters, nhl_goalies, api_status = fetch_nhl_stats()
 if total_ligue_pts == 0 and sum(len(v) for v in nhl_skaters.values()) >= 650 and sum(len(v) for v in nhl_goalies.values()) >= 60:
     for slg in SLUG_MAP.values():
         for role, pos_cat in [("att", "ATT"), ("def", "DEF"), ("gard", "GARD"), ("banc_att", "ATT"), ("banc_def", "DEF"), ("banc_gard", "GARD")]:
@@ -1584,7 +1591,7 @@ with tab_equipes:
     r_gard, g_gard = find_1_to_1_swaps(df_gard, df_banc_gard)
 
     c1, c2, c3 = st.columns([4, 1.2, 1.2])
-    with c1: st.info(f"🟢 **Statut API LNH** : {api_status}")
+    with c1: st.info(f"🟢 **Statut API LNH** : {st.session_state.get('api_msg_banner', api_status)}")
 
     with c2:
         if is_admin:
@@ -1609,6 +1616,7 @@ with tab_equipes:
                                     cur_df.at[idx_p, "T"] = t_r; cur_df.at[idx_p, "A"] = age_r; cur_df.at[idx_p, "PJ"] = pj_r; cur_df.at[idx_p, "Pts"] = pts_r
                                 st.session_state[f"{slg}_df_{role}"] = cur_df.sort_values(by=["Pts", "PJ"], ascending=[False, False]).reset_index(drop=True)
                     for slg in SLUG_MAP.values(): enforce_roster_limits(slg)
+                    st.session_state["api_msg_banner"] = status_new
                     save_state(official_api_updated=True, push_github=True)
                     st.rerun()
         else:
@@ -1617,6 +1625,11 @@ with tab_equipes:
     with c3:
         if is_admin:
             if st.button("📥 RECHARGER BASE", use_container_width=True, type="primary", help="Réinitialise les alignements, recrues et grilles de repêchage depuis les fichiers CSV/Excel."):
+                if sum(len(v) for v in nhl_skaters.values()) < 650:
+                    nhl_skaters_r, nhl_goalies_r, status_r = fetch_nhl_stats()
+                    globals()["nhl_skaters"] = nhl_skaters_r
+                    globals()["nhl_goalies"] = nhl_goalies_r
+                    st.session_state["api_msg_banner"] = status_r
                 init_rosters_from_csv()
                 init_recrues_from_csv()
                 init_drafts_from_excel()
@@ -1976,8 +1989,7 @@ with tab_reglements:
 
     if not reglements_loaded and not os.path.exists(path_excel):
         st.info("Fichier `gestion_phdm.xlsx` introuvable pour charger les règlements.")
-
-# =========================================================
+    # =========================================================
 # ONGLET 4 : CHOIX DE REPÊCHAGE & ENCAN COMPLET (2027 & 2028)
 # =========================================================
 DRAFT_TEAM_STYLES = {
@@ -2762,4 +2774,36 @@ def render_tab_direct():
             st.dataframe(df_check, use_container_width=True, hide_index=True)
 
 with tab_direct:
-    render_tab_direct()
+    if "direct_live_on" not in st.session_state:
+        st.session_state["direct_live_on"] = False
+    if not is_admin:
+        st.session_state["direct_live_on"] = False
+
+    c_onoff1, c_onoff2 = st.columns([1.4, 2.6], vertical_alignment="center")
+    with c_onoff1:
+        if is_admin:
+            if st.session_state["direct_live_on"]:
+                if st.button("🔴 ÉTEINDRE LE TEMPS RÉEL (ACTIF)", type="primary", use_container_width=True, key="btn_direct_toggle"):
+                    st.session_state["direct_live_on"] = False
+                    st.rerun()
+            else:
+                if st.button("🟢 ALLUMER LE TEMPS RÉEL (ÉTEINT)", use_container_width=True, key="btn_direct_toggle"):
+                    st.session_state["direct_live_on"] = True
+                    st.rerun()
+        else:
+            st.button("🔒 ALLUMER LE TEMPS RÉEL (COMMISSAIRE)", use_container_width=True, disabled=True, key="btn_direct_toggle", help="🔒 Réservé au commissaire.")
+    with c_onoff2:
+        if st.session_state["direct_live_on"]:
+            st.success("📡 **Temps réel ACTIVÉ** — Rafraîchissement automatique toutes les 60 secondes.")
+        elif not is_admin:
+            st.info("🔒 **Mode Consultation** — L'activation du temps réel est réservée au commissaire (mot de passe dans le menu latéral).")
+        else:
+            st.info("⏸️ **Temps réel ÉTEINT (OFF au démarrage)** — Aucune requête envoyée vers la LNH.")
+
+    if st.session_state["direct_live_on"]:
+        render_tab_direct()
+    else:
+        if is_admin:
+            st.warning("Cliquez sur **🟢 ALLUMER LE TEMPS RÉEL (ÉTEINT)** pour suivre les matchs LNH de la journée en direct. Pensez à l'éteindre une fois les matchs terminés.")
+        else:
+            st.warning("🔒 Entrez le mot de passe commissaire dans le menu de gauche pour déverrouiller le bouton du temps réel.")
