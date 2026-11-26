@@ -2333,20 +2333,20 @@
                 },
                 {
                     "No": 3,
+                    "Joueurs": "Brossoit Laurent",
+                    "T": "ANA",
+                    "A": 33,
+                    "EXP": 2,
+                    "PJ": 6,
+                    "Pts": 11
+                },
+                {
+                    "No": 4,
                     "Joueurs": "Bobrovsky Sergei",
                     "T": "TOR",
                     "A": 38,
                     "EXP": 1,
                     "PJ": 14,
-                    "Pts": 8
-                },
-                {
-                    "No": 4,
-                    "Joueurs": "Annunen Justus",
-                    "T": "NSH",
-                    "A": 26,
-                    "EXP": 0,
-                    "PJ": 7,
                     "Pts": 8
                 }
             ],
@@ -3023,12 +3023,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Brossoit Laurent",
-                    "T": "ANA",
-                    "A": 33,
-                    "EXP": 2,
-                    "PJ": 6,
-                    "Pts": 11
+                    "Joueurs": "Annunen Justus",
+                    "T": "NSH",
+                    "A": 26,
+                    "EXP": 0,
+                    "PJ": 7,
+                    "Pts": 8
                 },
                 {
                     "No": 2,
@@ -15244,12 +15244,12 @@
                 },
                 {
                     "No": 3,
-                    "Joueurs": "Cooley Devin",
-                    "T": "CGY",
-                    "A": 29,
+                    "Joueurs": "Tarasov Daniil",
+                    "T": "DET",
+                    "A": 27,
                     "EXP": 2,
                     "PJ": 11,
-                    "Pts": 10
+                    "Pts": 12
                 }
             ],
             "banc_att": [
@@ -16005,21 +16005,21 @@
             ],
             "banc_gard": [
                 {
-                    "No": 2,
-                    "Joueurs": "Tarasov Daniil",
-                    "T": "DET",
-                    "A": 27,
-                    "EXP": 2,
-                    "PJ": 11,
-                    "Pts": 12
-                },
-                {
                     "No": 1,
                     "Joueurs": "Daccord Joel",
                     "T": "SEA",
                     "A": 30,
                     "EXP": 0,
                     "PJ": 12,
+                    "Pts": 10
+                },
+                {
+                    "No": 2,
+                    "Joueurs": "Cooley Devin",
+                    "T": "CGY",
+                    "A": 29,
+                    "EXP": 2,
+                    "PJ": 11,
                     "Pts": 10
                 },
                 {
@@ -18863,7 +18863,7 @@
             ],
             "def": [
                 {
-                    "No": 2,
+                    "No": 1,
                     "Joueurs": "Drysdale Jamie",
                     "T": "PHI",
                     "A": 24,
@@ -18872,7 +18872,7 @@
                     "Pts": 15
                 },
                 {
-                    "No": 3,
+                    "No": 2,
                     "Joueurs": "Walker Sean",
                     "T": "CAR",
                     "A": 32,
@@ -18881,7 +18881,7 @@
                     "Pts": 13
                 },
                 {
-                    "No": 4,
+                    "No": 3,
                     "Joueurs": "Samberg Dylan",
                     "T": "WPG",
                     "A": 27,
@@ -18890,7 +18890,7 @@
                     "Pts": 12
                 },
                 {
-                    "No": 5,
+                    "No": 4,
                     "Joueurs": "Malinski Sam",
                     "T": "COL",
                     "A": 28,
@@ -18899,13 +18899,22 @@
                     "Pts": 10
                 },
                 {
-                    "No": 6,
+                    "No": 5,
                     "Joueurs": "Lohrei Mason",
                     "T": "BOS",
                     "A": 25,
                     "EXP": 2,
                     "PJ": 23,
                     "Pts": 9
+                },
+                {
+                    "No": 6,
+                    "Joueurs": "Roy Matt",
+                    "T": "WSH",
+                    "A": 31,
+                    "EXP": 1,
+                    "PJ": 16,
+                    "Pts": 6
                 },
                 {
                     "No": 7,
@@ -18915,15 +18924,6 @@
                     "EXP": 1,
                     "PJ": 16,
                     "Pts": 5
-                },
-                {
-                    "No": 1,
-                    "Joueurs": "Pettersson Elias",
-                    "T": "VAN",
-                    "A": 22,
-                    "EXP": 2,
-                    "PJ": 27,
-                    "Pts": 4
                 }
             ],
             "gard": [
@@ -18938,12 +18938,12 @@
                 },
                 {
                     "No": 2,
-                    "Joueurs": "Silovs Arturs",
-                    "T": "PIT",
-                    "A": 25,
+                    "Joueurs": "Bussi Brandon",
+                    "T": "CAR",
+                    "A": 28,
                     "EXP": 1,
-                    "PJ": 15,
-                    "Pts": 13
+                    "PJ": 10,
+                    "Pts": 14
                 }
             ],
             "banc_att": [
@@ -19446,21 +19446,21 @@
             "banc_def": [
                 {
                     "No": 1,
-                    "Joueurs": "Roy Matt",
-                    "T": "WSH",
-                    "A": 31,
-                    "EXP": 1,
-                    "PJ": 16,
-                    "Pts": 6
-                },
-                {
-                    "No": 2,
                     "Joueurs": "Christiansen Jake",
                     "T": "CBJ",
                     "A": 27,
                     "EXP": 1,
                     "PJ": 21,
                     "Pts": 5
+                },
+                {
+                    "No": 2,
+                    "Joueurs": "Pettersson Elias",
+                    "T": "VAN",
+                    "A": 22,
+                    "EXP": 2,
+                    "PJ": 27,
+                    "Pts": 4
                 },
                 {
                     "No": 3,
@@ -19646,12 +19646,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Bussi Brandon",
-                    "T": "CAR",
-                    "A": 28,
+                    "Joueurs": "Silovs Arturs",
+                    "T": "PIT",
+                    "A": 25,
                     "EXP": 1,
-                    "PJ": 10,
-                    "Pts": 14
+                    "PJ": 15,
+                    "Pts": 13
                 },
                 {
                     "No": 2,
@@ -21352,7 +21352,7 @@
         "van": {
             "att": [
                 {
-                    "No": 4,
+                    "No": 1,
                     "Joueurs": "Thomas Robert",
                     "T": "STL",
                     "A": 27,
@@ -21361,7 +21361,7 @@
                     "Pts": 25
                 },
                 {
-                    "No": 5,
+                    "No": 2,
                     "Joueurs": "Blake Jackson",
                     "T": "CAR",
                     "A": 23,
@@ -21370,7 +21370,7 @@
                     "Pts": 24
                 },
                 {
-                    "No": 8,
+                    "No": 3,
                     "Joueurs": "Farabee Joel",
                     "T": "CGY",
                     "A": 26,
@@ -21379,7 +21379,7 @@
                     "Pts": 21
                 },
                 {
-                    "No": 6,
+                    "No": 4,
                     "Joueurs": "Perfetti Cole",
                     "T": "WPG",
                     "A": 24,
@@ -21388,7 +21388,7 @@
                     "Pts": 20
                 },
                 {
-                    "No": 7,
+                    "No": 5,
                     "Joueurs": "Smith William",
                     "T": "SJS",
                     "A": 21,
@@ -21397,7 +21397,7 @@
                     "Pts": 19
                 },
                 {
-                    "No": 9,
+                    "No": 6,
                     "Joueurs": "Holmstrom Simon",
                     "T": "NYI",
                     "A": 25,
@@ -21406,7 +21406,7 @@
                     "Pts": 18
                 },
                 {
-                    "No": 1,
+                    "No": 7,
                     "Joueurs": "Peterka J-J",
                     "T": "BOS",
                     "A": 24,
@@ -21415,7 +21415,7 @@
                     "Pts": 15
                 },
                 {
-                    "No": 10,
+                    "No": 8,
                     "Joueurs": "Laferriere Alex",
                     "T": "LAK",
                     "A": 25,
@@ -21424,7 +21424,7 @@
                     "Pts": 15
                 },
                 {
-                    "No": 11,
+                    "No": 9,
                     "Joueurs": "kakko Kaapo",
                     "T": "SEA",
                     "A": 25,
@@ -21433,7 +21433,7 @@
                     "Pts": 15
                 },
                 {
-                    "No": 12,
+                    "No": 10,
                     "Joueurs": "Eberle Jordan",
                     "T": "SEA",
                     "A": 36,
@@ -21442,7 +21442,7 @@
                     "Pts": 15
                 },
                 {
-                    "No": 13,
+                    "No": 11,
                     "Joueurs": "Rodrigues Evan",
                     "T": "NJD",
                     "A": 33,
@@ -21451,7 +21451,7 @@
                     "Pts": 14
                 },
                 {
-                    "No": 2,
+                    "No": 12,
                     "Joueurs": "Karlsson William",
                     "T": "VGK",
                     "A": 33,
@@ -21460,7 +21460,7 @@
                     "Pts": 12
                 },
                 {
-                    "No": 14,
+                    "No": 13,
                     "Joueurs": "Gaudreau Fred",
                     "T": "SEA",
                     "A": 33,
@@ -21469,7 +21469,7 @@
                     "Pts": 12
                 },
                 {
-                    "No": 15,
+                    "No": 14,
                     "Joueurs": "Copp Andrew",
                     "T": "DET",
                     "A": 32,
@@ -21478,7 +21478,7 @@
                     "Pts": 11
                 },
                 {
-                    "No": 16,
+                    "No": 15,
                     "Joueurs": "Kindel Ben",
                     "T": "PIT",
                     "A": 19,
@@ -21487,7 +21487,7 @@
                     "Pts": 11
                 },
                 {
-                    "No": 3,
+                    "No": 16,
                     "Joueurs": "Crouse Lawson",
                     "T": "UTA",
                     "A": 29,
@@ -21496,7 +21496,7 @@
                     "Pts": 9
                 },
                 {
-                    "No": 21,
+                    "No": 17,
                     "Joueurs": "Kulich Jiri",
                     "T": "BUF",
                     "A": 22,
@@ -21505,7 +21505,7 @@
                     "Pts": 9
                 },
                 {
-                    "No": 17,
+                    "No": 18,
                     "Joueurs": "Benn Jamie",
                     "T": "DAL",
                     "A": 37,
@@ -21514,7 +21514,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 18,
+                    "No": 19,
                     "Joueurs": "Dach Colton",
                     "T": "EDM",
                     "A": 23,
@@ -21523,7 +21523,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 19,
+                    "No": 20,
                     "Joueurs": "Teravainen Teuvo",
                     "T": "CHI",
                     "A": 32,
@@ -21532,7 +21532,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 20,
+                    "No": 21,
                     "Joueurs": "Marchessault Jonathan",
                     "T": "NSH",
                     "A": 35,
@@ -21542,12 +21542,12 @@
                 },
                 {
                     "No": 22,
-                    "Joueurs": "Graf Collin",
-                    "T": "SJS",
-                    "A": 24,
-                    "EXP": 2,
-                    "PJ": 25,
-                    "Pts": 5
+                    "Joueurs": "Beauvillier Anthony",
+                    "T": "WSH",
+                    "A": 29,
+                    "EXP": 0,
+                    "PJ": 21,
+                    "Pts": 6
                 }
             ],
             "def": [
@@ -21662,7 +21662,7 @@
                     "Pts": 24
                 },
                 {
-                    "No": 3,
+                    "No": 2,
                     "Joueurs": "Markstrom Jacob",
                     "T": "FLA",
                     "A": 36,
@@ -21671,27 +21671,18 @@
                     "Pts": 18
                 },
                 {
-                    "No": 2,
-                    "Joueurs": "Garand Dylan",
-                    "T": "NYR",
-                    "A": 24,
+                    "No": 3,
+                    "Joueurs": "Knight Spencer",
+                    "T": "CHI",
+                    "A": 25,
                     "EXP": 2,
-                    "PJ": 16,
-                    "Pts": 16
+                    "PJ": 20,
+                    "Pts": 17
                 }
             ],
             "banc_att": [
                 {
-                    "No": 3,
-                    "Joueurs": "Beauvillier Anthony",
-                    "T": "WSH",
-                    "A": 29,
-                    "EXP": 0,
-                    "PJ": 21,
-                    "Pts": 6
-                },
-                {
-                    "No": 4,
+                    "No": 1,
                     "Joueurs": "Knuble Cole",
                     "T": "PHI",
                     "A": 22,
@@ -21700,7 +21691,16 @@
                     "Pts": 6
                 },
                 {
-                    "No": 1,
+                    "No": 2,
+                    "Joueurs": "Graf Collin",
+                    "T": "SJS",
+                    "A": 24,
+                    "EXP": 2,
+                    "PJ": 25,
+                    "Pts": 5
+                },
+                {
+                    "No": 3,
                     "Joueurs": "Kapanen Oliver",
                     "T": "MTL",
                     "A": 23,
@@ -21709,7 +21709,7 @@
                     "Pts": 4
                 },
                 {
-                    "No": 2,
+                    "No": 4,
                     "Joueurs": "Zucker Jason",
                     "T": "BUF",
                     "A": 34,
@@ -22245,12 +22245,12 @@
             "banc_gard": [
                 {
                     "No": 1,
-                    "Joueurs": "Knight Spencer",
-                    "T": "CHI",
-                    "A": 25,
+                    "Joueurs": "Garand Dylan",
+                    "T": "NYR",
+                    "A": 24,
                     "EXP": 2,
-                    "PJ": 20,
-                    "Pts": 17
+                    "PJ": 16,
+                    "Pts": 16
                 },
                 {
                     "No": 2,
@@ -24382,7 +24382,7 @@
                     "Pts": 14
                 },
                 {
-                    "No": 7,
+                    "No": 5,
                     "Joueurs": "Korczak Kaedan",
                     "T": "PIT",
                     "A": 25,
@@ -24391,7 +24391,7 @@
                     "Pts": 12
                 },
                 {
-                    "No": 5,
+                    "No": 6,
                     "Joueurs": "Trouba Jacob",
                     "T": "SJS",
                     "A": 32,
@@ -24400,7 +24400,7 @@
                     "Pts": 11
                 },
                 {
-                    "No": 6,
+                    "No": 7,
                     "Joueurs": "Ekholm Mattias",
                     "T": "EDM",
                     "A": 36,
@@ -24419,12 +24419,12 @@
                 },
                 {
                     "No": 9,
-                    "Joueurs": "DeAngelo Anthony",
-                    "T": "NYI",
-                    "A": 31,
-                    "EXP": 0,
+                    "Joueurs": "Skjei Brady",
+                    "T": "NSH",
+                    "A": 32,
+                    "EXP": 1,
                     "PJ": 24,
-                    "Pts": 8
+                    "Pts": 9
                 }
             ],
             "gard": [
@@ -24983,15 +24983,6 @@
             "banc_def": [
                 {
                     "No": 1,
-                    "Joueurs": "Skjei Brady",
-                    "T": "NSH",
-                    "A": 32,
-                    "EXP": 1,
-                    "PJ": 24,
-                    "Pts": 9
-                },
-                {
-                    "No": 5,
                     "Joueurs": "Morrissey Josh",
                     "T": "WPG",
                     "A": 31,
@@ -25000,7 +24991,7 @@
                     "Pts": 9
                 },
                 {
-                    "No": 3,
+                    "No": 2,
                     "Joueurs": "Shea Ryan",
                     "T": "EDM",
                     "A": 29,
@@ -25009,7 +25000,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 6,
+                    "No": 3,
                     "Joueurs": "Gavrikov Vladislav",
                     "T": "NYR",
                     "A": 31,
@@ -25019,6 +25010,15 @@
                 },
                 {
                     "No": 4,
+                    "Joueurs": "DeAngelo Anthony",
+                    "T": "NYI",
+                    "A": 31,
+                    "EXP": 0,
+                    "PJ": 24,
+                    "Pts": 8
+                },
+                {
+                    "No": 5,
                     "Joueurs": "Demelo Dylan",
                     "T": "WPG",
                     "A": 33,
@@ -25027,7 +25027,7 @@
                     "Pts": 8
                 },
                 {
-                    "No": 7,
+                    "No": 6,
                     "Joueurs": "Wallinder William",
                     "T": "DET",
                     "A": 24,
@@ -25036,7 +25036,7 @@
                     "Pts": 6
                 },
                 {
-                    "No": 8,
+                    "No": 7,
                     "Joueurs": "Kuznetsov Yan",
                     "T": "CGY",
                     "A": 24,
@@ -25045,7 +25045,7 @@
                     "Pts": 5
                 },
                 {
-                    "No": 9,
+                    "No": 8,
                     "Joueurs": "Pulock Ryan",
                     "T": "NYI",
                     "A": 32,
@@ -25054,7 +25054,7 @@
                     "Pts": 4
                 },
                 {
-                    "No": 10,
+                    "No": 9,
                     "Joueurs": "Faber Brock",
                     "T": "MIN",
                     "A": 24,
@@ -25063,7 +25063,7 @@
                     "Pts": 3
                 },
                 {
-                    "No": 11,
+                    "No": 10,
                     "Joueurs": "Larsson Adam",
                     "T": "SEA",
                     "A": 34,
@@ -25072,7 +25072,7 @@
                     "Pts": 2
                 },
                 {
-                    "No": 2,
+                    "No": 11,
                     "Joueurs": "Lindell Esa",
                     "T": "DAL",
                     "A": 32,
